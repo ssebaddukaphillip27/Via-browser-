@@ -748,1188 +748,1270 @@
 
     <div class="toast" id="toast"></div>
 
-    <script>
-        const WORKER_PROXY = 'https://proxy.psugx.workers.dev/?url=';
-        const BING_SEARCH_URL = 'https://www.bing.com/search?q=';
+<script>
+/* =========================================================
+   Codex256Browser — Enhanced Ad / Tracker Protection
+   ========================================================= */
 
-        let tabs = [];
-        let activeTabId = null;
-        let tabCounter = 0;
-        let bookmarks = JSON.parse(localStorage.getItem('codex256_bookmarks') || '[]');
-        let historyList = JSON.parse(localStorage.getItem('codex256_history') || '[]');
-        let lightMode = localStorage.getItem('codex256_lightmode') === 'true';
-        let useWorkerProxy = localStorage.getItem('codex256_use_worker') !== 'false';
+const WORKER_PROXY = 'https://proxy.psugx.workers.dev/?url=';
+const BING_SEARCH_URL = 'https://www.bing.com/search?q=';
 
-        // Filter list & URL modification settings
-        let easyListEnabled = localStorage.getItem('codex256_filter_easylist') !== 'false';
-        let easyPrivacyEnabled = localStorage.getItem('codex256_filter_easyprivacy') !== 'false';
-        let fanboyEnabled = localStorage.getItem('codex256_filter_fanboy') !== 'false';
-        let trackQueriesEnabled = localStorage.getItem('codex256_url_track_queries') !== 'false';
-        let ampRedirectsEnabled = localStorage.getItem('codex256_url_amp_redirects') !== 'false';
+/* ---------- Browser state ---------- */
 
-        let lastFailedUrl = '';
-        let loadTimer = null;
+let tabs = [];
+let activeTabId = null;
+let tabCounter = 0;
 
-        localStorage.setItem('codex256_engine', 'bing');
+let bookmarks = JSON.parse(
+    localStorage.getItem('codex256_bookmarks') || '[]'
+);
 
-        if (lightMode) {
-            document.body.classList.add('light-mode');
+let historyList = JSON.parse(
+    localStorage.getItem('codex256_history') || '[]'
+);
+
+let lightMode =
+    localStorage.getItem('codex256_lightmode') === 'true';
+
+let useWorkerProxy =
+    localStorage.getItem('codex256_use_worker') !== 'false';
+
+let easyListEnabled =
+    localStorage.getItem('codex256_filter_easylist') !== 'false';
+
+let easyPrivacyEnabled =
+    localStorage.getItem('codex256_filter_easyprivacy') !== 'false';
+
+let fanboyEnabled =
+    localStorage.getItem('codex256_filter_fanboy') !== 'false';
+
+let trackQueriesEnabled =
+    localStorage.getItem('codex256_url_track_queries') !== 'false';
+
+let ampRedirectsEnabled =
+    localStorage.getItem('codex256_url_amp_redirects') !== 'false';
+
+let lastFailedUrl = '';
+let loadTimer = null;
+let blockedCount = 0;
+
+localStorage.setItem('codex256_engine', 'bing');
+
+
+/* =========================================================
+   BLOCK LISTS
+   ========================================================= */
+
+const AD_DOMAINS = [
+    'doubleclick.net',
+    'googlesyndication.com',
+    'googleadservices.com',
+    'adservice.google.com',
+    'pagead2.googlesyndication.com',
+    'adnxs.com',
+    'adsrvr.org',
+    'advertising.com',
+    'advertising.com',
+    'criteo.com',
+    'criteo.net',
+    'taboola.com',
+    'outbrain.com',
+    'pubmatic.com',
+    'rubiconproject.com',
+    'openx.net',
+    'casalemedia.com',
+    '33across.com',
+    'sharethrough.com',
+    'media.net',
+    'zedo.com',
+    'yieldmo.com',
+    'smartadserver.com',
+    'lijit.com',
+    'indexexchange.com',
+    'contextweb.com',
+    'bidvertiser.com',
+    'propellerads.com',
+    'popads.net',
+    'popcash.net',
+    'adsterra.com',
+    'exoclick.com',
+    'trafficjunky.com',
+    'mgid.com',
+    'revcontent.com',
+    'admaven.com',
+    'hilltopads.net',
+    'clickadu.com',
+    'richads.com',
+    'monetag.com',
+    'push.house',
+    'pushwoosh.com',
+    'onesignal.com'
+];
+
+const TRACKER_DOMAINS = [
+    'google-analytics.com',
+    'googletagmanager.com',
+    'analytics.google.com',
+    'hotjar.com',
+    'mixpanel.com',
+    'segment.io',
+    'segment.com',
+    'scorecardresearch.com',
+    'quantserve.com',
+    'matomo.cloud',
+    'clarity.ms',
+    'newrelic.com',
+    'fullstory.com',
+    'mouseflow.com',
+    'heap.io',
+    'amplitude.com',
+    'branch.io',
+    'appsflyer.com',
+    'adjust.com',
+    'doubleverify.com',
+    'demdex.net',
+    'omtrdc.net',
+    'everesttech.net',
+    'krxd.net',
+    'rlcdn.com',
+    'bluekai.com',
+    'exelator.com',
+    'adsymptotic.com',
+    'eyeota.net',
+    'casalemedia.com'
+];
+
+const ANNOYANCE_DOMAINS = [
+    'facebook.net',
+    'connect.facebook.net',
+    'platform.twitter.com',
+    'platform.linkedin.com',
+    'disqus.com',
+    'sharethis.com',
+    'addthis.com',
+    'shareaholic.com',
+    'addtoany.com',
+    'pinterest.com'
+];
+
+/*
+ * Suspicious URL/path patterns.
+ * These are intentionally conservative so normal
+ * websites are less likely to break.
+ */
+const BLOCKED_PATH_PATTERNS = [
+    /\/ads?[\/._-]/i,
+    /\/adserver[\/._-]/i,
+    /\/advert[\/._-]/i,
+    /\/advertising[\/._-]/i,
+    /\/advertisement[\/._-]/i,
+    /\/banner[\/._-]/i,
+    /\/banners[\/._-]/i,
+    /\/doubleclick[\/._-]/i,
+    /\/tracking[\/._-]/i,
+    /\/tracker[\/._-]/i,
+    /\/pixel[\/._-]/i,
+    /\/beacon[\/._-]/i,
+    /\/telemetry[\/._-]/i,
+    /\/analytics[\/._-]/i,
+    /\/prebid[\/._-]/i,
+    /\/bidder[\/._-]/i,
+    /\/bidding[\/._-]/i,
+    /\/popunder[\/._-]/i,
+    /\/popup[\/._-]/i,
+    /\/popunder/i,
+    /\/clicktrack/i,
+    /\/redirect-ad/i
+];
+
+const TRACKING_PARAMS = new Set([
+    'utm_source',
+    'utm_medium',
+    'utm_campaign',
+    'utm_term',
+    'utm_content',
+    'utm_id',
+    'utm_source_platform',
+    'utm_creative_format',
+    'utm_marketing_tactic',
+    'fbclid',
+    'gclid',
+    'dclid',
+    'gbraid',
+    'wbraid',
+    'msclkid',
+    'yclid',
+    'mc_cid',
+    'mc_eid',
+    '_hsenc',
+    '_hsmi',
+    'igshid',
+    'si',
+    'spm',
+    'scm'
+]);
+
+
+/* =========================================================
+   BLOCKING HELPERS
+   ========================================================= */
+
+function normalizeHost(host) {
+    return String(host || '')
+        .toLowerCase()
+        .replace(/^www\./, '');
+}
+
+function hostMatches(host, domain) {
+    host = normalizeHost(host);
+    domain = normalizeHost(domain);
+
+    return host === domain || host.endsWith('.' + domain);
+}
+
+function getBlockedDomains() {
+    const blocked = [];
+
+    if (easyListEnabled) {
+        blocked.push(...AD_DOMAINS);
+    }
+
+    if (easyPrivacyEnabled) {
+        blocked.push(...TRACKER_DOMAINS);
+    }
+
+    if (fanboyEnabled) {
+        blocked.push(...ANNOYANCE_DOMAINS);
+    }
+
+    return [...new Set(blocked)];
+}
+
+function isBlockedDomainUrl(value) {
+    if (!value) return false;
+
+    let url;
+
+    try {
+        url = new URL(value, location.href);
+    } catch {
+        return false;
+    }
+
+    const host = normalizeHost(url.hostname);
+
+    for (const domain of getBlockedDomains()) {
+        if (hostMatches(host, domain)) {
+            blockedCount++;
+            return true;
+        }
+    }
+
+    for (const pattern of BLOCKED_PATH_PATTERNS) {
+        if (pattern.test(url.pathname)) {
+            blockedCount++;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function isProbablyAdUrl(value) {
+    if (!value) return false;
+
+    let url;
+
+    try {
+        url = new URL(value, location.href);
+    } catch {
+        return false;
+    }
+
+    const full =
+        url.hostname +
+        url.pathname +
+        url.search;
+
+    if (isBlockedDomainUrl(url.href)) {
+        return true;
+    }
+
+    const patterns = [
+        /(^|[._/-])ads?([._/-]|$)/i,
+        /adserver/i,
+        /advert/i,
+        /doubleclick/i,
+        /googlesyndication/i,
+        /tracking/i,
+        /tracker/i,
+        /analytics/i,
+        /telemetry/i,
+        /beacon/i,
+        /pixel/i,
+        /prebid/i,
+        /popunder/i,
+        /clicktrack/i
+    ];
+
+    return patterns.some(pattern => pattern.test(full));
+}
+
+
+/* =========================================================
+   URL CLEANING
+   ========================================================= */
+
+function cleanUrl(input) {
+    if (!input) return input;
+
+    try {
+        let url = new URL(input);
+
+        if (trackQueriesEnabled) {
+            [...url.searchParams.keys()].forEach(key => {
+                if (TRACKING_PARAMS.has(key.toLowerCase())) {
+                    url.searchParams.delete(key);
+                }
+            });
         }
 
-        const AD_DOMAINS = [
-            'doubleclick.net', 'googlesyndication.com', 'adservice.google.com',
-            'taboola.com', 'outbrain.com', 'advertising.com', 'criteo.com',
-            'pubmatic.com', 'rubiconproject.com', 'openx.net', 'adnxs.com'
-        ];
+        if (ampRedirectsEnabled) {
+            url.searchParams.delete('amp');
+            url.searchParams.delete('amp_js_v');
+        }
 
-        const TRACKER_DOMAINS = [
-            'google-analytics.com', 'googletagmanager.com', 'hotjar.com',
-            'mixpanel.com', 'segment.io', 'scorecardresearch.com',
-            'quantserve.com', 'matomo.cloud', 'clarity.ms', 'newrelic.com'
-        ];
+        return url.href;
+    } catch {
+        return input;
+    }
+}
 
-        const TRACKING_PARAMS = new Set([
-            'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
-            'utm_id', 'utm_source_platform', 'utm_creative_format', 'utm_marketing_tactic',
-            'fbclid', 'gclid', 'dclid', 'gbraid', 'wbraid', 'msclkid', 'yclid',
-            'mc_cid', 'mc_eid', '_hsenc', '_hsmi', 'igshid', 'si', 'spm', 'scm'
-        ]);
 
-        const FALLBACK_PROXIES = [
-            (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-            (url) => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
-            (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
-        ];
+/* =========================================================
+   INPUT PARSING
+   ========================================================= */
 
-        const tabBar = document.getElementById('tabBar');
-        const addTabBtn = document.getElementById('addTabBtn');
-        const backBtn = document.getElementById('backBtn');
-        const forwardBtn = document.getElementById('forwardBtn');
-        const refreshBtn = document.getElementById('refreshBtn');
-        const homeBtn = document.getElementById('homeBtn');
-        const urlInput = document.getElementById('urlInput');
-        const urlIcon = document.getElementById('urlIcon');
-        const bookmarkBtn = document.getElementById('bookmarkBtn');
-        const menuBtn = document.getElementById('menuBtn');
-        const viewportStage = document.getElementById('viewportStage');
-        const homePage = document.getElementById('homePage');
-        const browserFrame = document.getElementById('browserFrame');
-        const loadingBar = document.getElementById('loadingBar');
-        const sidePanel = document.getElementById('sidePanel');
-        const overlay = document.getElementById('overlay');
-        const panelTitle = document.getElementById('panelTitle');
-        const panelContent = document.getElementById('panelContent');
-        const panelClose = document.getElementById('panelClose');
-        const contextMenu = document.getElementById('contextMenu');
-        const homeSearchInput = document.getElementById('homeSearchInput');
-        const tabOverview = document.getElementById('tabOverview');
-        const tabGrid = document.getElementById('tabGrid');
-        const toast = document.getElementById('toast');
-        const pageLoader = document.getElementById('pageLoader');
-        const loaderText = document.getElementById('loaderText');
-        const errorPage = document.getElementById('errorPage');
-        const errorTitle = document.getElementById('errorTitle');
-        const errorMessage = document.getElementById('errorMessage');
+function parseInput(value) {
+    value = String(value || '').trim();
 
-        createTab();
+    if (!value) return '';
 
-        function createTab(url = null) {
-            closePanel();
-            hideTabOverview();
-            const id = ++tabCounter;
-            const tab = {
-                id,
-                title: 'New Tab',
-                url: url || '',
-                historyStack: [],
-                historyIndex: -1,
-                isHome: !url,
-                mode: 'home',
-                cachedHtml: null
+    if (
+        value.startsWith('http://') ||
+        value.startsWith('https://')
+    ) {
+        return cleanUrl(value);
+    }
+
+    if (
+        value.startsWith('localhost') ||
+        value.includes('.') &&
+        !value.includes(' ')
+    ) {
+        return cleanUrl('https://' + value);
+    }
+
+    return BING_SEARCH_URL + encodeURIComponent(value);
+}
+
+
+/* =========================================================
+   POPUP / REDIRECT PROTECTION
+   ========================================================= */
+
+function installPopupProtection(frame) {
+    try {
+        const doc = frame.contentDocument;
+
+        if (!doc) return;
+
+        const win = frame.contentWindow;
+
+        if (!win) return;
+
+        /*
+         * Block window.open.
+         */
+        try {
+            const originalOpen = win.open;
+
+            win.open = function(url) {
+                if (url && isProbablyAdUrl(url)) {
+                    blockedCount++;
+                    return null;
+                }
+
+                /*
+                 * Do not allow arbitrary popup windows.
+                 * Send legitimate navigation back to browser.
+                 */
+                if (url) {
+                    try {
+                        window.postMessage({
+                            type: 'VIA_NAVIGATE',
+                            url: new URL(url, win.location.href).href
+                        }, '*');
+                    } catch {}
+                }
+
+                return null;
             };
-            tabs.push(tab);
-            switchTab(id);
-            renderTabs();
-            if (url) navigateTo(url);
-            return id;
-        }
+        } catch {}
 
-        function closeTab(id) {
-            const index = tabs.findIndex(t => t.id === id);
-            if (index === -1) return;
-            tabs.splice(index, 1);
-            if (tabs.length === 0) { createTab(); return; }
-            if (activeTabId === id) {
-                const newIndex = Math.min(index, tabs.length - 1);
-                switchTab(tabs[newIndex].id);
-            }
-            renderTabs();
-        }
-
-        function switchTab(id) {
-            activeTabId = id;
-            const tab = getActiveTab();
-            if (!tab) return;
-
-            clearTimeout(loadTimer);
-            urlInput.value = tab.isHome ? '' : tab.url;
-            if (tab.isHome) homeSearchInput.value = '';
-            updateUrlIcon(tab.url, tab.isHome);
-
-            homePage.style.display = 'none';
-            browserFrame.style.display = 'none';
-            pageLoader.classList.remove('show');
-            errorPage.classList.remove('show');
-
-            if (tab.isHome) {
-                homePage.style.display = 'flex';
-            } else if (tab.mode === 'fallback' && tab.cachedHtml) {
-                browserFrame.removeAttribute('src');
-                browserFrame.srcdoc = tab.cachedHtml;
-                browserFrame.style.display = 'block';
-            } else if (tab.url) {
-                browserFrame.style.display = 'block';
-                loadPage(tab.url, { forceFallback: tab.mode === 'fallback' });
-            }
-
-            updateNavButtons();
-            updateBookmarkIcon();
-            renderTabs();
-        }
-
-        function getActiveTab() {
-            return tabs.find(t => t.id === activeTabId);
-        }
-
-        function renderTabs() {
-            tabBar.querySelectorAll('.tab').forEach(t => t.remove());
-
-            tabs.forEach(tab => {
-                const tabEl = document.createElement('button');
-                tabEl.className = `tab ${tab.id === activeTabId ? 'active' : ''}`;
-                tabEl.innerHTML = `
-                    <span class="tab-title">${escapeHtml(tab.title)}</span>
-                    <span class="tab-close" title="Close tab"><i class="bi bi-x"></i></span>
-                `;
-                tabEl.addEventListener('click', (e) => {
-                    if (e.target.closest('.tab-close')) {
-                        closeTab(tab.id);
-                    } else {
-                        switchTab(tab.id);
-                    }
-                });
-                tabBar.insertBefore(tabEl, addTabBtn);
-            });
-        }
-
-        function escapeHtml(str) {
-            const div = document.createElement('div');
-            div.textContent = String(str ?? '');
-            return div.innerHTML;
-        }
-
-        function cleanUrl(rawUrl) {
-            try {
-                const parsed = new URL(rawUrl);
-
-                // Unwrap AMP redirects if enabled
-                if (ampRedirectsEnabled) {
-                    const paramCandidate =
-                        parsed.searchParams.get('amp_url') ||
-                        parsed.searchParams.get('amp_js_v') ? parsed.searchParams.get('amp_url') : null;
-
-                    if (paramCandidate && /^https?:\/\//i.test(paramCandidate)) {
-                        return cleanUrl(paramCandidate);
-                    }
-
-                    if (parsed.hostname.endsWith('cdn.ampproject.org')) {
-                        const parts = parsed.pathname.split('/').filter(Boolean);
-                        const startIdx = (parts[0] === 'c' || parts[0] === 'v') ? 2 : 1;
-                        if (parts.length > startIdx) {
-                            const scheme = parts[startIdx - 1] === 's' ? 'https://' : 'http://';
-                            const unwrapped = scheme + parts.slice(startIdx).join('/') + parsed.search;
-                            return cleanUrl(unwrapped);
-                        }
-                    }
-                }
-
-                // Remove known tracking query parameters if enabled
-                if (trackQueriesEnabled) {
-                    for (const key of [...parsed.searchParams.keys()]) {
-                        const lower = key.toLowerCase();
-                        if (TRACKING_PARAMS.has(lower) || lower.startsWith('utm_')) {
-                            parsed.searchParams.delete(key);
-                        }
-                    }
-                }
-
-                return parsed.toString();
-            } catch {
-                return rawUrl;
-            }
-        }
-
-        function getBlockedDomains() {
-            const blocked = [];
-            if (easyListEnabled) blocked.push(...AD_DOMAINS);
-            if (easyPrivacyEnabled) blocked.push(...TRACKER_DOMAINS);
-            return blocked;
-        }
-
-        function isBlockedDomainUrl(targetUrl) {
-            const blocked = getBlockedDomains();
-            if (!blocked.length) return false;
-            try {
-                const host = new URL(targetUrl).hostname.toLowerCase();
-                return blocked.some(domain => host === domain || host.endsWith('.' + domain));
-            } catch {
-                return false;
-            }
-        }
-
-        function updateUrlIcon(url, isHome) {
-            if (isHome || !url) {
-                urlIcon.className = 'bi bi-search';
-                return;
-            }
-            try {
-                const parsed = new URL(url);
-                urlIcon.className = parsed.protocol === 'https:' ? 'bi bi-lock' : 'bi bi-globe';
-            } catch {
-                urlIcon.className = 'bi bi-globe';
-            }
-        }
-
-        function parseInput(input) {
-            const trimmed = input.trim();
-            if (!trimmed) return null;
-
-            if (/^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(trimmed)) {
-                return trimmed;
-            }
-
-            if (
-                !trimmed.includes(' ') &&
-                (/^(localhost|\d{1,3}(\.\d{1,3}){3})(:\d+)?(\/.*)?$/i.test(trimmed) ||
-                 /^[\w-]+(\.[\w-]+)+(:\d+)?(\/.*)?$/.test(trimmed))
-            ) {
-                return 'https://' + trimmed;
-            }
-
-            return BING_SEARCH_URL + encodeURIComponent(trimmed);
-        }
-
-        async function navigateTo(input, options = {}) {
-            const parsedUrl = parseInput(input);
-            if (!parsedUrl) return;
-
-            const finalUrl = cleanUrl(parsedUrl);
-            const tab = getActiveTab();
-            if (!tab) return;
-
-            closePanel();
-            hideTabOverview();
-
-            tab.isHome = false;
-            tab.url = finalUrl;
-            tab.title = extractDomain(finalUrl);
-            tab.cachedHtml = null;
-
-            if (!options.skipHistory) {
-                if (tab.historyIndex < tab.historyStack.length - 1) {
-                    tab.historyStack = tab.historyStack.slice(0, tab.historyIndex + 1);
-                }
-                tab.historyStack.push(finalUrl);
-                tab.historyIndex = tab.historyStack.length - 1;
-                addToHistory(finalUrl, tab.title);
-            }
-
-            homePage.style.display = 'none';
-            errorPage.classList.remove('show');
-            browserFrame.style.display = 'block';
-            urlInput.value = finalUrl;
-            updateUrlIcon(finalUrl, false);
-            updateNavButtons();
-            updateBookmarkIcon();
-            renderTabs();
-
-            await loadPage(finalUrl, options);
-        }
-
-        async function loadPage(url, options = {}) {
-            const tab = getActiveTab();
-            if (!tab) return;
-
-            clearTimeout(loadTimer);
-            lastFailedUrl = url;
-            pageLoader.classList.add('show');
-            errorPage.classList.remove('show');
-            loaderText.textContent = 'Loading ' + extractDomain(url) + '...';
-            simulateLoading();
-
-            if (options.forceFallback) {
-                await loadViaFallbackProxies(url, tab);
-                return;
-            }
-
-            if (useWorkerProxy) {
-                tab.mode = 'worker';
-                browserFrame.removeAttribute('srcdoc');
-                browserFrame.src = WORKER_PROXY + encodeURIComponent(url);
-            } else {
-                tab.mode = 'direct';
-                browserFrame.removeAttribute('srcdoc');
-                browserFrame.src = url;
-            }
-
-            loadTimer = setTimeout(() => {
-                if (getActiveTab()?.id !== tab.id || tab.isHome) return;
-                finishLoadingVisual();
-            }, 7000);
-        }
-
-        async function loadViaFallbackProxies(url, tab) {
-            tab.mode = 'fallback';
-            let html = null;
-
-            for (let i = 0; i < FALLBACK_PROXIES.length; i++) {
-                if (getActiveTab()?.id !== tab.id) return;
-                try {
-                    loaderText.textContent = `Trying fallback proxy (${i + 1}/${FALLBACK_PROXIES.length})...`;
-                    const proxyUrl = FALLBACK_PROXIES[i](url);
-                    const response = await fetch(proxyUrl, {
-                        signal: AbortSignal.timeout(12000)
-                    });
-                    if (!response.ok) throw new Error('HTTP ' + response.status);
-                    const text = await response.text();
-                    if (text && text.trim().length > 0) {
-                        html = text;
-                        break;
-                    }
-                } catch (err) {
-                    console.warn(`Fallback proxy ${i + 1} failed:`, err.message);
-                }
-            }
-
-            finishLoadingVisual();
-
-            if (getActiveTab()?.id !== tab.id) return;
-
-            if (html) {
-                const preparedHtml = prepareProxiedHtml(html, url);
-                tab.cachedHtml = preparedHtml;
-                browserFrame.removeAttribute('src');
-                browserFrame.srcdoc = preparedHtml;
-                browserFrame.style.display = 'block';
-
-                const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
-                if (titleMatch && titleMatch[1].trim()) {
-                    tab.title = titleMatch[1].trim();
-                    renderTabs();
-                }
-            } else {
-                showFrameBlocked(
-                    url,
-                    `Couldn't load ${extractDomain(url)}. The site may block proxy requests or require opening in a new tab.`
-                );
-            }
-        }
-
-        function prepareProxiedHtml(html, originalUrl) {
-            let output = html.replace(/<base[^>]*>/gi, '');
-
-            // Strip known ad/tracker tags when EasyList or EasyPrivacy is enabled
-            const blockedDomains = getBlockedDomains();
-            if (blockedDomains.length > 0) {
-                const escapedDomains = blockedDomains.map(d => d.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-                const domainRegex = new RegExp(`https?:\\/\\/([a-z0-9-]+\\.)?(${escapedDomains.join('|')})`, 'i');
-                output = output.replace(
-                    /<(script|iframe|img|embed|object)([^>]*\b(?:src|data-src)=["'][^"']*["'][^>]*)>([\s\S]*?<\/\1>)?/gi,
-                    (match, tag, attrs) => {
-                        const srcMatch = attrs.match(/\b(?:src|data-src)=["']([^"']*)["']/i);
-                        if (srcMatch && domainRegex.test(srcMatch[1])) {
-                            return '';
-                        }
-                        return match;
-                    }
-                );
-            }
-
-            const fanboyCss = fanboyEnabled ? `
-                [class*="social-share"], [class*="share-buttons"], [id*="cookie-banner"],
-                [class*="cookie-consent"], [class*="popup-overlay"], [class*="newsletter-modal"],
-                .addthis_toolbox, .fb-like, .twitter-share-button {
-                    display: none !important;
-                }
-            ` : '';
-
-            const fitStyle = `<style>
-                html, body {
-                    max-width: 100% !important;
-                    width: 100% !important;
-                    margin: 0 auto !important;
-                    box-sizing: border-box !important;
-                    overflow-x: hidden !important;
-                }
-                img, video, canvas, iframe, table {
-                    max-width: 100% !important;
-                    height: auto !important;
-                }
-                ${fanboyCss}
-            </style>`;
-
-            try {
-                const parsed = new URL(originalUrl);
-                const baseHref = parsed.origin + parsed.pathname.replace(/[^/]*$/, '');
-                const baseTag = `<base href="${escapeHtml(baseHref)}">${fitStyle}`;
-                if (/<head[^>]*>/i.test(output)) {
-                    output = output.replace(/<head[^>]*>/i, (m) => m + baseTag);
-                } else if (/<html[^>]*>/i.test(output)) {
-                    output = output.replace(/<html[^>]*>/i, (m) => m + '<head>' + baseTag + '</head>');
-                } else {
-                    output = '<head>' + baseTag + '</head>' + output;
-                }
-            } catch {
-                output = '<head>' + fitStyle + '</head>' + output;
-            }
-
-            const serializedSettings = JSON.stringify({
-                ampRedirectsEnabled,
-                trackQueriesEnabled,
-                fanboyEnabled,
-                blockedDomains
+        /*
+         * Remove target=_blank from links.
+         */
+        doc.querySelectorAll('a[target="_blank"], a[target="_new"]')
+            .forEach(a => {
+                a.removeAttribute('target');
             });
 
-            const helperScript = `<script>
-                (function() {
-                    const CFG = ${serializedSettings};
-                    const TRACK_KEYS = new Set([
-                        'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
-                        'utm_id', 'utm_source_platform', 'utm_creative_format', 'utm_marketing_tactic',
-                        'fbclid', 'gclid', 'dclid', 'gbraid', 'wbraid', 'msclkid', 'yclid',
-                        'mc_cid', 'mc_eid', '_hsenc', '_hsmi', 'igshid', 'si', 'spm', 'scm'
-                    ]);
+        /*
+         * Stop suspicious links.
+         */
+        doc.addEventListener(
+            'click',
+            function(event) {
+                const link =
+                    event.target.closest &&
+                    event.target.closest('a');
 
-                    function cleanFrameUrl(raw) {
-                        try {
-                            const u = new URL(raw);
-                            if (CFG.ampRedirectsEnabled) {
-                                const ampParam = u.searchParams.get('amp_url');
-                                if (ampParam && /^https?:\\/\\//i.test(ampParam)) {
-                                    return cleanFrameUrl(ampParam);
-                                }
-                                if (u.hostname.endsWith('cdn.ampproject.org')) {
-                                    const parts = u.pathname.split('/').filter(Boolean);
-                                    const startIdx = (parts[0] === 'c' || parts[0] === 'v') ? 2 : 1;
-                                    if (parts.length > startIdx) {
-                                        const scheme = parts[startIdx - 1] === 's' ? 'https://' : 'http://';
-                                        return cleanFrameUrl(scheme + parts.slice(startIdx).join('/') + u.search);
-                                    }
-                                }
-                            }
-                            if (CFG.trackQueriesEnabled) {
-                                for (const k of [...u.searchParams.keys()]) {
-                                    const lk = k.toLowerCase();
-                                    if (TRACK_KEYS.has(lk) || lk.startsWith('utm_')) {
-                                        u.searchParams.delete(k);
-                                    }
-                                }
-                            }
-                            return u.toString();
-                        } catch (_) {
-                            return raw;
-                        }
-                    }
+                if (!link) return;
 
-                    if (CFG.fanboyEnabled) {
-                        const removeAnnoyances = () => {
-                            document.querySelectorAll('div, section, aside').forEach(el => {
-                                const txt = (el.id + ' ' + el.className).toLowerCase();
-                                if (
-                                    txt.includes('cookie') || txt.includes('gdpr') ||
-                                    txt.includes('popup') || txt.includes('modal') ||
-                                    txt.includes('newsletter') || txt.includes('subscribe-bar')
-                                ) {
-                                    const style = window.getComputedStyle(el);
-                                    if (style.position === 'fixed' || style.position === 'sticky' || parseInt(style.zIndex || '0', 10) > 50) {
-                                        el.remove();
-                                    }
-                                }
-                            });
-                        };
-                        document.addEventListener('DOMContentLoaded', removeAnnoyances);
-                        setTimeout(removeAnnoyances, 1200);
-                    }
+                const href = link.href;
 
-                    document.addEventListener('click', function(e) {
-                        const link = e.target.closest('a[href]');
-                        if (!link) return;
-                        const href = link.getAttribute('href');
-                        if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
-                        e.preventDefault();
-                        try {
-                            const resolved = new URL(href, document.baseURI).href;
-                            const cleaned = cleanFrameUrl(resolved);
-                            window.parent.postMessage({ type: 'VIA_NAVIGATE', url: cleaned }, '*');
-                        } catch (_) {}
-                    }, true);
-                })();
-            <\/script>`;
-
-            if (/<\/body>/i.test(output)) {
-                output = output.replace(/<\/body>/i, helperScript + '</body>');
-            } else {
-                output += helperScript;
-            }
-            return output;
-        }
-
-        window.addEventListener('message', (event) => {
-            if (!event.data) return;
-
-            if (event.data.type === 'VIA_NAVIGATE' && event.data.url) {
-                const cleaned = cleanUrl(event.data.url);
-                if (isBlockedDomainUrl(cleaned)) {
-                    showToast('Blocked ad/tracker link');
+                if (href && isProbablyAdUrl(href)) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    blockedCount++;
                     return;
                 }
-                navigateTo(cleaned);
-            }
 
-            if (event.data.type === 'VIA_SYNC') {
-                const tab = getActiveTab();
-                if (!tab || tab.isHome) return;
-                if (event.data.url) {
-                    const cleaned = cleanUrl(event.data.url);
-                    if (tab.url !== cleaned) {
-                        tab.url = cleaned;
-                        urlInput.value = cleaned;
-                        updateUrlIcon(cleaned, false);
+                if (href) {
+                    window.postMessage({
+                        type: 'VIA_NAVIGATE',
+                        url: cleanUrl(href)
+                    }, '*');
+                }
+            },
+            true
+        );
+
+        /*
+         * Block suspicious forms.
+         */
+        doc.addEventListener(
+            'submit',
+            function(event) {
+                const form = event.target;
+
+                if (!form) return;
+
+                const action = form.action || '';
+
+                if (isProbablyAdUrl(action)) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    blockedCount++;
+                }
+            },
+            true
+        );
+
+    } catch {}
+}
+
+
+/* =========================================================
+   COSMETIC FILTER
+   ========================================================= */
+
+const COSMETIC_SELECTORS = [
+    '[id^="ad-"]',
+    '[id^="ad_"]',
+    '[id*="-ad-"]',
+    '[id*="_ad_"]',
+    '[id*="advert"]',
+    '[id*="sponsor"]',
+    '[id*="banner-ad"]',
+    '[id*="popup"]',
+    '[id*="popunder"]',
+    '[id*="cookie-banner"]',
+    '[id*="cookie-consent"]',
+    '[id*="newsletter"]',
+    '[class^="ad-"]',
+    '[class^="ad_"]',
+    '[class*=" ad-"]',
+    '[class*=" ad_"]',
+    '[class*="advert"]',
+    '[class*="advertisement"]',
+    '[class*="sponsor"]',
+    '[class*="banner-ad"]',
+    '[class*="popup"]',
+    '[class*="popunder"]',
+    '[class*="cookie-banner"]',
+    '[class*="cookie-consent"]',
+    '[class*="newsletter"]',
+    '[aria-label*="advertisement" i]',
+    '[aria-label*="sponsored" i]',
+    '[data-ad]',
+    '[data-ad-slot]',
+    '[data-ad-client]',
+    '[data-ad-unit]',
+    '[data-google-query-id]'
+];
+
+function removeCosmeticAds(doc) {
+    if (!doc) return;
+
+    try {
+        COSMETIC_SELECTORS.forEach(selector => {
+            doc.querySelectorAll(selector).forEach(el => {
+                try {
+                    el.remove();
+                    blockedCount++;
+                } catch {}
+            });
+        });
+    } catch {}
+}
+
+
+/* =========================================================
+   INJECT PROTECTION INTO DOCUMENT
+   ========================================================= */
+
+function injectProtection(doc) {
+    if (!doc || !doc.head) return;
+
+    try {
+        const style = doc.createElement('style');
+
+        style.textContent = `
+            [id*="ad"],
+            [class*="advertisement"],
+            [class*="sponsored"],
+            [class*="ad-container"],
+            [class*="ad-wrapper"],
+            [class*="popup"],
+            [class*="popunder"],
+            [class*="cookie-banner"],
+            [class*="newsletter-popup"] {
+                max-height: 0 !important;
+                min-height: 0 !important;
+                height: 0 !important;
+                overflow: hidden !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+            }
+        `;
+
+        doc.head.appendChild(style);
+    } catch {}
+
+
+    /*
+     * Mutation observer removes dynamically inserted ads.
+     */
+    try {
+        const script = doc.createElement('script');
+
+        script.textContent = `
+            (() => {
+                const suspicious = [
+                    '[id*="advert"]',
+                    '[id*="sponsor"]',
+                    '[id*="popup"]',
+                    '[id*="popunder"]',
+                    '[class*="advert"]',
+                    '[class*="advertisement"]',
+                    '[class*="sponsor"]',
+                    '[class*="popup"]',
+                    '[class*="popunder"]',
+                    '[data-ad]',
+                    '[data-ad-slot]',
+                    '[data-ad-client]',
+                    '[data-google-query-id]'
+                ];
+
+                function clean() {
+                    for (const selector of suspicious) {
+                        try {
+                            document
+                                .querySelectorAll(selector)
+                                .forEach(el => {
+                                    el.remove();
+                                });
+                        } catch {}
                     }
                 }
-                if (event.data.title) {
-                    tab.title = event.data.title;
-                    renderTabs();
-                }
-            }
+
+                clean();
+
+                new MutationObserver(() => {
+                    clean();
+                }).observe(document.documentElement, {
+                    childList: true,
+                    subtree: true
+                });
+
+                /*
+                 * Prevent common popup techniques.
+                 */
+                try {
+                    window.open = function() {
+                        return null;
+                    };
+                } catch {}
+
+                /*
+                 * Prevent links from silently opening new tabs.
+                 */
+                document.addEventListener(
+                    'click',
+                    event => {
+                        const a =
+                            event.target.closest &&
+                            event.target.closest('a');
+
+                        if (!a) return;
+
+                        if (
+                            a.target === '_blank' ||
+                            a.target === '_new'
+                        ) {
+                            a.removeAttribute('target');
+                        }
+                    },
+                    true
+                );
+            })();
+        `;
+
+        doc.head.appendChild(script);
+    } catch {}
+}
+
+
+/* =========================================================
+   PREPARE PROXIED HTML
+   ========================================================= */
+
+function prepareProxiedHtml(html, baseUrl) {
+    if (!html) return html;
+
+    try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+
+        /*
+         * Remove hostile <base> elements.
+         */
+        doc.querySelectorAll('base').forEach(el => el.remove());
+
+        /*
+         * Block resource URLs.
+         */
+        const resourceSelectors = [
+            'script[src]',
+            'iframe[src]',
+            'frame[src]',
+            'img[src]',
+            'img[data-src]',
+            'source[src]',
+            'video[src]',
+            'audio[src]',
+            'embed[src]',
+            'object[data]',
+            'link[href]'
+        ];
+
+        resourceSelectors.forEach(selector => {
+            doc.querySelectorAll(selector).forEach(el => {
+                const attribute =
+                    el.hasAttribute('src') ? 'src' :
+                    el.hasAttribute('data-src') ? 'data-src' :
+                    el.hasAttribute('href') ? 'href' :
+                    'data';
+
+                const raw = el.getAttribute(attribute);
+
+                if (!raw) return;
+
+                try {
+                    const absolute =
+                        new URL(raw, baseUrl).href;
+
+                    if (isProbablyAdUrl(absolute)) {
+                        el.remove();
+                        blockedCount++;
+                    }
+                } catch {}
+            });
         });
 
-        browserFrame.addEventListener('load', () => {
-            const tab = getActiveTab();
-            if (!tab || tab.isHome) return;
+        /*
+         * Remove obvious ad containers.
+         */
+        removeCosmeticAds(doc);
+
+        /*
+         * Inject protection.
+         */
+        injectProtection(doc);
+
+        /*
+         * Inject a small navigation bridge.
+         */
+        const bridge = doc.createElement('script');
+
+        bridge.textContent = `
+            document.addEventListener(
+                'click',
+                function(event) {
+                    const a =
+                        event.target.closest &&
+                        event.target.closest('a');
+
+                    if (!a || !a.href) return;
+
+                    try {
+                        parent.postMessage({
+                            type: 'VIA_NAVIGATE',
+                            url: a.href
+                        }, '*');
+                    } catch {}
+                },
+                true
+            );
+        `;
+
+        if (doc.head) {
+            doc.head.appendChild(bridge);
+        }
+
+        return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+
+    } catch {
+        return html;
+    }
+}
+
+
+/* =========================================================
+   WORKER / FALLBACK LOADING
+   ========================================================= */
+
+async function fetchThroughFallback(url) {
+    const proxies = [
+        u =>
+            `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+
+        u =>
+            `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+
+        u =>
+            `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`
+    ];
+
+    for (const proxy of proxies) {
+        try {
+            const response = await fetch(proxy(url));
+
+            if (!response.ok) continue;
+
+            const html = await response.text();
+
+            if (!html) continue;
+
+            return prepareProxiedHtml(html, url);
+
+        } catch {}
+    }
+
+    throw new Error('All fallback proxies failed');
+}
+
+
+/* =========================================================
+   LOAD PAGE
+   ========================================================= */
+
+async function loadPage(url) {
+    const frame = document.getElementById('browserFrame');
+
+    if (!frame) return;
+
+    url = cleanUrl(url);
+
+    if (!url) return;
+
+    /*
+     * Never navigate directly to a known ad/tracker domain.
+     */
+    if (isBlockedDomainUrl(url)) {
+        showBlockedPage(url);
+        return;
+    }
+
+    lastFailedUrl = url;
+
+    clearTimeout(loadTimer);
+
+    try {
+        /*
+         * Worker handles the real network request.
+         */
+        if (useWorkerProxy) {
+            frame.src =
+                WORKER_PROXY +
+                encodeURIComponent(url);
+        } else {
+            frame.src = url;
+        }
+
+        loadTimer = setTimeout(() => {
+            /*
+             * Do not automatically switch away from a valid
+             * page just because it is slow.
+             */
+        }, 20000);
+
+    } catch (error) {
+        showErrorPage(url);
+    }
+}
+
+
+/* =========================================================
+   NAVIGATION
+   ========================================================= */
+
+function navigateTo(input) {
+    const url = parseInput(input);
+
+    if (!url) return;
+
+    if (isBlockedDomainUrl(url)) {
+        showBlockedPage(url);
+        return;
+    }
+
+    const addressBar =
+        document.getElementById('urlInput');
+
+    if (addressBar) {
+        addressBar.value = url;
+    }
+
+    try {
+        historyList.unshift({
+            url,
+            title: url,
+            time: Date.now()
+        });
+
+        historyList =
+            historyList.slice(0, 500);
+
+        localStorage.setItem(
+            'codex256_history',
+            JSON.stringify(historyList)
+        );
+    } catch {}
+
+    loadPage(url);
+}
+
+
+/* =========================================================
+   BLOCKED PAGE
+   ========================================================= */
+
+function showBlockedPage(url) {
+    const frame =
+        document.getElementById('browserFrame');
+
+    if (!frame) return;
+
+    const safe =
+        String(url)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+
+    frame.srcdoc = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport"
+                  content="width=device-width,initial-scale=1">
+            <style>
+                body {
+                    margin: 0;
+                    padding: 40px 20px;
+                    background: #020617;
+                    color: #f8fafc;
+                    font-family: system-ui, sans-serif;
+                    text-align: center;
+                }
+
+                .box {
+                    max-width: 520px;
+                    margin: 40px auto;
+                    padding: 30px;
+                    background: #0f172a;
+                    border: 1px solid #334155;
+                    border-radius: 18px;
+                }
+
+                h1 {
+                    color: #818cf8;
+                }
+
+                code {
+                    display: block;
+                    margin-top: 20px;
+                    padding: 12px;
+                    background: #1e293b;
+                    border-radius: 8px;
+                    word-break: break-all;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="box">
+                <h1>🛡️ Blocked</h1>
+                <p>
+                    Codex256Browser blocked this
+                    advertising or tracking request.
+                </p>
+                <code>${safe}</code>
+            </div>
+        </body>
+        </html>
+    `;
+}
+
+
+/* =========================================================
+   ERROR PAGE
+   ========================================================= */
+
+function showErrorPage(url) {
+    const frame =
+        document.getElementById('browserFrame');
+
+    if (!frame) return;
+
+    const safe =
+        String(url)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+
+    frame.srcdoc = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport"
+                  content="width=device-width,initial-scale=1">
+            <style>
+                body {
+                    margin: 0;
+                    padding: 40px 20px;
+                    background: #020617;
+                    color: #f8fafc;
+                    font-family: system-ui, sans-serif;
+                    text-align: center;
+                }
+
+                .box {
+                    max-width: 520px;
+                    margin: 40px auto;
+                    padding: 30px;
+                    background: #0f172a;
+                    border-radius: 18px;
+                    border: 1px solid #334155;
+                }
+
+                button {
+                    margin-top: 20px;
+                    padding: 12px 20px;
+                    border: 0;
+                    border-radius: 10px;
+                    background: #4f46e5;
+                    color: white;
+                    font-weight: 600;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="box">
+                <h2>Unable to load page</h2>
+                <p>${safe}</p>
+                <button onclick="location.reload()">
+                    Retry
+                </button>
+            </div>
+        </body>
+        </html>
+    `;
+}
+
+
+/* =========================================================
+   IFRAME EVENTS
+   ========================================================= */
+
+const browserFrame =
+    document.getElementById('browserFrame');
+
+if (browserFrame) {
+
+    browserFrame.addEventListener(
+        'load',
+        function() {
             clearTimeout(loadTimer);
-            finishLoadingVisual();
 
             try {
-                const doc = browserFrame.contentDocument;
-                if (doc && doc.title && doc.title.trim()) {
-                    tab.title = doc.title.trim();
-                    renderTabs();
+                const doc =
+                    browserFrame.contentDocument;
+
+                if (doc) {
+                    removeCosmeticAds(doc);
+                    injectProtection(doc);
+                    installPopupProtection(browserFrame);
                 }
-            } catch {
-                // Cross-origin title is handled via VIA_SYNC or domain fallback
-            }
-        });
+            } catch {}
 
-        browserFrame.addEventListener('error', () => {
-            const tab = getActiveTab();
-            if (!tab || tab.isHome) return;
-            clearTimeout(loadTimer);
-            finishLoadingVisual();
-            showFrameBlocked(tab.url, `Failed to load ${extractDomain(tab.url)}.`);
-        });
+            updateBlockedCounter();
+        }
+    );
+}
 
-        function showFrameBlocked(url, message) {
-            lastFailedUrl = url;
-            browserFrame.style.display = 'none';
-            errorTitle.textContent = "Can't display site inside frame";
-            errorMessage.textContent = message;
-            errorPage.classList.add('show');
+
+/* =========================================================
+   MESSAGE BRIDGE
+   ========================================================= */
+
+window.addEventListener(
+    'message',
+    function(event) {
+
+        const data = event.data;
+
+        if (!data || typeof data !== 'object') {
+            return;
         }
 
-        function finishLoadingVisual() {
-            pageLoader.classList.remove('show');
-            loadingBar.style.width = '100%';
-            setTimeout(() => {
-                loadingBar.style.transition = 'none';
-                loadingBar.style.width = '0%';
-            }, 250);
-        }
+        if (data.type === 'VIA_NAVIGATE') {
 
-        function goHome() {
-            closePanel();
-            hideTabOverview();
-            const tab = getActiveTab();
-            if (!tab) return;
-            clearTimeout(loadTimer);
-            tab.isHome = true;
-            tab.mode = 'home';
-            tab.title = 'New Tab';
-            tab.url = '';
-            tab.cachedHtml = null;
-            browserFrame.removeAttribute('src');
-            browserFrame.removeAttribute('srcdoc');
-            homePage.style.display = 'flex';
-            browserFrame.style.display = 'none';
-            pageLoader.classList.remove('show');
-            errorPage.classList.remove('show');
-            urlInput.value = '';
-            homeSearchInput.value = '';
-            updateUrlIcon('', true);
-            updateNavButtons();
-            renderTabs();
-        }
+            const url = cleanUrl(data.url);
 
-        function goBack() {
-            closePanel();
-            hideTabOverview();
-            const tab = getActiveTab();
-            if (!tab || tab.historyIndex <= 0) return;
-            tab.historyIndex--;
-            const url = tab.historyStack[tab.historyIndex];
-            tab.url = url;
-            tab.title = extractDomain(url);
-            tab.cachedHtml = null;
-            urlInput.value = url;
-            updateUrlIcon(url, false);
-            updateNavButtons();
-            renderTabs();
-            navigateTo(url, { skipHistory: true });
-        }
+            if (!url) return;
 
-        function goForward() {
-            closePanel();
-            hideTabOverview();
-            const tab = getActiveTab();
-            if (!tab || tab.historyIndex >= tab.historyStack.length - 1) return;
-            tab.historyIndex++;
-            const url = tab.historyStack[tab.historyIndex];
-            tab.url = url;
-            tab.title = extractDomain(url);
-            tab.cachedHtml = null;
-            urlInput.value = url;
-            updateUrlIcon(url, false);
-            updateNavButtons();
-            renderTabs();
-            navigateTo(url, { skipHistory: true });
-        }
-
-        function refresh() {
-            closePanel();
-            hideTabOverview();
-            const tab = getActiveTab();
-            if (!tab || tab.isHome || !tab.url) return;
-            tab.cachedHtml = null;
-            errorPage.classList.remove('show');
-            browserFrame.style.display = 'block';
-            loadPage(tab.url, { forceFallback: tab.mode === 'fallback' });
-        }
-
-        function updateNavButtons() {
-            const tab = getActiveTab();
-            if (!tab) return;
-            backBtn.disabled = tab.historyIndex <= 0;
-            forwardBtn.disabled = tab.historyIndex >= tab.historyStack.length - 1;
-        }
-
-        function simulateLoading() {
-            loadingBar.style.width = '0%';
-            loadingBar.style.transition = 'none';
-            requestAnimationFrame(() => {
-                loadingBar.style.transition = 'width 0.5s ease';
-                loadingBar.style.width = '65%';
-            });
-        }
-
-        function addToBookmarks(url, title) {
-            if (bookmarks.find(b => b.url === url)) {
-                showToast('Already bookmarked');
+            if (isProbablyAdUrl(url)) {
+                blockedCount++;
+                updateBlockedCounter();
                 return;
             }
-            bookmarks.push({ url, title, date: Date.now() });
-            localStorage.setItem('codex256_bookmarks', JSON.stringify(bookmarks));
-            updateBookmarkIcon();
-            showToast('Bookmarked');
+
+            navigateTo(url);
         }
 
-        function removeFromBookmarks(url) {
-            bookmarks = bookmarks.filter(b => b.url !== url);
-            localStorage.setItem('codex256_bookmarks', JSON.stringify(bookmarks));
-            updateBookmarkIcon();
-            showToast('Bookmark removed');
-        }
+        if (data.type === 'VIA_SYNC') {
 
-        function updateBookmarkIcon() {
-            const tab = getActiveTab();
-            if (!tab || tab.isHome) {
-                bookmarkBtn.innerHTML = '<i class="bi bi-star"></i>';
-                return;
-            }
-            const isBookmarked = bookmarks.find(b => b.url === tab.url);
-            bookmarkBtn.innerHTML = isBookmarked ? '<i class="bi bi-star-fill"></i>' : '<i class="bi bi-star"></i>';
-        }
+            if (data.url) {
+                const cleaned =
+                    cleanUrl(data.url);
 
-        function addToHistory(url, title) {
-            historyList.unshift({ url, title, date: Date.now() });
-            if (historyList.length > 100) historyList = historyList.slice(0, 100);
-            localStorage.setItem('codex256_history', JSON.stringify(historyList));
-        }
+                const input =
+                    document.getElementById('urlInput');
 
-        function openPanel(type) {
-            closeAllMenus();
-            hideTabOverview();
-            panelTitle.textContent = type.charAt(0).toUpperCase() + type.slice(1);
-            if (type === 'bookmarks') renderBookmarksPanel();
-            else if (type === 'history') renderHistoryPanel();
-            else if (type === 'settings') renderSettingsPanel();
-            sidePanel.classList.add('open');
-            overlay.classList.add('show');
-        }
-
-        function closePanel() {
-            sidePanel.classList.remove('open');
-            overlay.classList.remove('show');
-        }
-
-        function renderBookmarksPanel() {
-            if (bookmarks.length === 0) {
-                panelContent.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary)"><i class="bi bi-star" style="font-size:32px;display:block;margin-bottom:12px"></i>No bookmarks yet</div>';
-                return;
-            }
-            panelContent.innerHTML = bookmarks.map((b, i) => `
-                <div class="panel-item" data-url="${escapeHtml(b.url)}">
-                    <div class="panel-item-icon"><i class="bi bi-globe"></i></div>
-                    <div class="panel-item-info">
-                        <div class="panel-item-title">${escapeHtml(b.title)}</div>
-                        <div class="panel-item-subtitle">${escapeHtml(b.url)}</div>
-                    </div>
-                    <button class="panel-item-delete" data-index="${i}"><i class="bi bi-trash"></i></button>
-                </div>
-            `).join('');
-
-            panelContent.querySelectorAll('.panel-item').forEach(item => {
-                item.addEventListener('click', (e) => {
-                    if (e.target.closest('.panel-item-delete')) return;
-                    navigateTo(item.dataset.url);
-                });
-            });
-
-            panelContent.querySelectorAll('.panel-item-delete').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    bookmarks.splice(parseInt(btn.dataset.index), 1);
-                    localStorage.setItem('codex256_bookmarks', JSON.stringify(bookmarks));
-                    renderBookmarksPanel();
-                    updateBookmarkIcon();
-                });
-            });
-        }
-
-        function renderHistoryPanel() {
-            if (historyList.length === 0) {
-                panelContent.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary)"><i class="bi bi-clock-history" style="font-size:32px;display:block;margin-bottom:12px"></i>No history yet</div>';
-                return;
-            }
-            panelContent.innerHTML = historyList.map(h => `
-                <div class="panel-item" data-url="${escapeHtml(h.url)}">
-                    <div class="panel-item-icon"><i class="bi bi-clock"></i></div>
-                    <div class="panel-item-info">
-                        <div class="panel-item-title">${escapeHtml(h.title)}</div>
-                        <div class="panel-item-subtitle">${formatTime(h.date)} &middot; ${escapeHtml(h.url)}</div>
-                    </div>
-                </div>
-            `).join('');
-
-            panelContent.querySelectorAll('.panel-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    navigateTo(item.dataset.url);
-                });
-            });
-        }
-
-        function renderSettingsPanel() {
-            panelContent.innerHTML = `
-                <div class="settings-group">
-                    <div class="settings-group-title">Appearance &amp; Loading</div>
-                    <div class="settings-item" id="lightModeToggle">
-                        <div class="settings-item-left">
-                            <i class="bi bi-brightness-high"></i>
-                            <div class="settings-item-text">
-                                <span class="settings-item-label">Light Mode</span>
-                            </div>
-                        </div>
-                        <div class="toggle ${lightMode ? 'active' : ''}" id="lightToggle"></div>
-                    </div>
-                    <div class="settings-item" id="workerModeToggle">
-                        <div class="settings-item-left">
-                            <i class="bi bi-cloud-check"></i>
-                            <div class="settings-item-text">
-                                <span class="settings-item-label">Use Worker Proxy</span>
-                            </div>
-                        </div>
-                        <div class="toggle ${useWorkerProxy ? 'active' : ''}" id="workerToggle"></div>
-                    </div>
-                </div>
-
-                <div class="settings-group">
-                    <div class="settings-group-title">Filter Lists</div>
-                    <div class="settings-item" id="easyListToggle">
-                        <div class="settings-item-left">
-                            <i class="bi bi-shield-x"></i>
-                            <div class="settings-item-text">
-                                <span class="settings-item-label">EasyList</span>
-                                <span class="settings-item-sub">Main ad filter list</span>
-                            </div>
-                        </div>
-                        <div class="toggle ${easyListEnabled ? 'active' : ''}" id="easyListSwitch"></div>
-                    </div>
-                    <div class="settings-item" id="easyPrivacyToggle">
-                        <div class="settings-item-left">
-                            <i class="bi bi-eye-slash"></i>
-                            <div class="settings-item-text">
-                                <span class="settings-item-label">EasyPrivacy</span>
-                                <span class="settings-item-sub">Main tracker filter list</span>
-                            </div>
-                        </div>
-                        <div class="toggle ${easyPrivacyEnabled ? 'active' : ''}" id="easyPrivacySwitch"></div>
-                    </div>
-                    <div class="settings-item" id="fanboyToggle">
-                        <div class="settings-item-left">
-                            <i class="bi bi-window-x"></i>
-                            <div class="settings-item-text">
-                                <span class="settings-item-label">Fanboy's Annoyance List</span>
-                                <span class="settings-item-sub">Popups, overlays &amp; social widgets</span>
-                            </div>
-                        </div>
-                        <div class="toggle ${fanboyEnabled ? 'active' : ''}" id="fanboySwitch"></div>
-                    </div>
-                </div>
-
-                <div class="settings-group">
-                    <div class="settings-group-title">URL Modification</div>
-                    <div class="settings-item" id="trackQueriesToggle">
-                        <div class="settings-item-left">
-                            <i class="bi bi-link-45deg"></i>
-                            <div class="settings-item-text">
-                                <span class="settings-item-label">Track Queries</span>
-                                <span class="settings-item-sub">Removes tracking queries from URLs</span>
-                            </div>
-                        </div>
-                        <div class="toggle ${trackQueriesEnabled ? 'active' : ''}" id="trackQueriesSwitch"></div>
-                    </div>
-                    <div class="settings-item" id="ampRedirectsToggle">
-                        <div class="settings-item-left">
-                            <i class="bi bi-lightning-charge"></i>
-                            <div class="settings-item-text">
-                                <span class="settings-item-label">AMP Redirects</span>
-                                <span class="settings-item-sub">Unwraps AMP redirect URLs</span>
-                            </div>
-                        </div>
-                        <div class="toggle ${ampRedirectsEnabled ? 'active' : ''}" id="ampRedirectsSwitch"></div>
-                    </div>
-                </div>
-
-                <div class="settings-group">
-                    <div class="settings-group-title">Search</div>
-                    <div class="settings-item">
-                        <div class="settings-item-left">
-                            <i class="bi bi-microsoft"></i>
-                            <div class="settings-item-text">
-                                <span class="settings-item-label">Search Engine</span>
-                            </div>
-                        </div>
-                        <span style="font-size:12px;color:var(--text-secondary)">Bing</span>
-                    </div>
-                </div>
-
-                <div class="settings-group">
-                    <div class="settings-group-title">Privacy</div>
-                    <div class="settings-item" id="clearHistoryBtn">
-                        <div class="settings-item-left">
-                            <i class="bi bi-trash"></i>
-                            <div class="settings-item-text">
-                                <span class="settings-item-label">Clear History</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="settings-item" id="clearBookmarksBtn">
-                        <div class="settings-item-left">
-                            <i class="bi bi-star"></i>
-                            <div class="settings-item-text">
-                                <span class="settings-item-label">Clear Bookmarks</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="settings-group">
-                    <div class="settings-group-title">About</div>
-                    <div class="settings-item">
-                        <div class="settings-item-left">
-                            <i class="bi bi-info-circle"></i>
-                            <div class="settings-item-text">
-                                <span class="settings-item-label">Codex256Browser v2.1</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            document.getElementById('lightModeToggle').addEventListener('click', () => {
-                lightMode = !lightMode;
-                document.body.classList.toggle('light-mode', lightMode);
-                document.getElementById('lightToggle').classList.toggle('active', lightMode);
-                localStorage.setItem('codex256_lightmode', lightMode);
-            });
-
-            document.getElementById('workerModeToggle').addEventListener('click', () => {
-                useWorkerProxy = !useWorkerProxy;
-                document.getElementById('workerToggle').classList.toggle('active', useWorkerProxy);
-                localStorage.setItem('codex256_use_worker', useWorkerProxy);
-                showToast(useWorkerProxy ? 'Cloudflare Worker proxy enabled' : 'Direct frame mode enabled');
-            });
-
-            document.getElementById('easyListToggle').addEventListener('click', () => {
-                easyListEnabled = !easyListEnabled;
-                document.getElementById('easyListSwitch').classList.toggle('active', easyListEnabled);
-                localStorage.setItem('codex256_filter_easylist', easyListEnabled);
-                showToast(easyListEnabled ? 'EasyList enabled' : 'EasyList disabled');
-            });
-
-            document.getElementById('easyPrivacyToggle').addEventListener('click', () => {
-                easyPrivacyEnabled = !easyPrivacyEnabled;
-                document.getElementById('easyPrivacySwitch').classList.toggle('active', easyPrivacyEnabled);
-                localStorage.setItem('codex256_filter_easyprivacy', easyPrivacyEnabled);
-                showToast(easyPrivacyEnabled ? 'EasyPrivacy enabled' : 'EasyPrivacy disabled');
-            });
-
-            document.getElementById('fanboyToggle').addEventListener('click', () => {
-                fanboyEnabled = !fanboyEnabled;
-                document.getElementById('fanboySwitch').classList.toggle('active', fanboyEnabled);
-                localStorage.setItem('codex256_filter_fanboy', fanboyEnabled);
-                showToast(fanboyEnabled ? "Fanboy's Annoyance List enabled" : "Fanboy's Annoyance List disabled");
-            });
-
-            document.getElementById('trackQueriesToggle').addEventListener('click', () => {
-                trackQueriesEnabled = !trackQueriesEnabled;
-                document.getElementById('trackQueriesSwitch').classList.toggle('active', trackQueriesEnabled);
-                localStorage.setItem('codex256_url_track_queries', trackQueriesEnabled);
-                showToast(trackQueriesEnabled ? 'Track queries cleaning enabled' : 'Track queries cleaning disabled');
-            });
-
-            document.getElementById('ampRedirectsToggle').addEventListener('click', () => {
-                ampRedirectsEnabled = !ampRedirectsEnabled;
-                document.getElementById('ampRedirectsSwitch').classList.toggle('active', ampRedirectsEnabled);
-                localStorage.setItem('codex256_url_amp_redirects', ampRedirectsEnabled);
-                showToast(ampRedirectsEnabled ? 'AMP redirect unwrapping enabled' : 'AMP redirect unwrapping disabled');
-            });
-
-            document.getElementById('clearHistoryBtn').addEventListener('click', () => {
-                historyList = [];
-                localStorage.setItem('codex256_history', '[]');
-                showToast('History cleared');
-            });
-
-            document.getElementById('clearBookmarksBtn').addEventListener('click', () => {
-                bookmarks = [];
-                localStorage.setItem('codex256_bookmarks', '[]');
-                updateBookmarkIcon();
-                showToast('Bookmarks cleared');
-            });
-        }
-
-        function showTabOverview() {
-            closeAllMenus();
-            closePanel();
-            tabGrid.innerHTML = tabs.map(tab => `
-                <div class="tab-card ${tab.id === activeTabId ? 'active' : ''}" data-id="${tab.id}">
-                    <div class="tab-card-preview">
-                        <i class="bi bi-globe"></i>
-                    </div>
-                    <div class="tab-card-info">
-                        <span class="tab-card-title">${escapeHtml(tab.title)}</span>
-                        <button class="tab-card-close" data-close="${tab.id}"><i class="bi bi-x"></i></button>
-                    </div>
-                </div>
-            `).join('');
-
-            tabGrid.querySelectorAll('.tab-card').forEach(card => {
-                card.addEventListener('click', (e) => {
-                    if (e.target.closest('.tab-card-close')) return;
-                    switchTab(parseInt(card.dataset.id));
-                    hideTabOverview();
-                });
-            });
-
-            tabGrid.querySelectorAll('.tab-card-close').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    closeTab(parseInt(btn.dataset.close));
-                    if (tabs.length > 0) showTabOverview();
-                    else hideTabOverview();
-                });
-            });
-
-            tabOverview.classList.add('show');
-        }
-
-        function hideTabOverview() {
-            tabOverview.classList.remove('show');
-        }
-
-        function extractDomain(url) {
-            try {
-                const u = new URL(url);
-                return u.hostname.replace(/^www\./, '');
-            } catch {
-                return url.substring(0, 30);
-            }
-        }
-
-        function formatTime(timestamp) {
-            const date = new Date(timestamp);
-            const now = new Date();
-            if (date.toDateString() === now.toDateString()) {
-                return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            }
-            return date.toLocaleDateString();
-        }
-
-        function showToast(message) {
-            toast.textContent = message;
-            toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 2000);
-        }
-
-        function closeAllMenus() {
-            contextMenu.classList.remove('show');
-        }
-
-        addTabBtn.addEventListener('click', () => createTab());
-
-        urlInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                navigateTo(urlInput.value);
-                urlInput.blur();
-            }
-        });
-
-        urlInput.addEventListener('focus', () => urlInput.select());
-
-        homeSearchInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') navigateTo(homeSearchInput.value);
-        });
-
-        backBtn.addEventListener('click', goBack);
-        forwardBtn.addEventListener('click', goForward);
-        refreshBtn.addEventListener('click', refresh);
-        homeBtn.addEventListener('click', goHome);
-
-        bookmarkBtn.addEventListener('click', () => {
-            const tab = getActiveTab();
-            if (!tab || tab.isHome) return;
-            const existing = bookmarks.find(b => b.url === tab.url);
-            if (existing) removeFromBookmarks(tab.url);
-            else addToBookmarks(tab.url, tab.title);
-        });
-
-        menuBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const isAlreadyOpen = contextMenu.classList.contains('show');
-            closeAllMenus();
-            if (isAlreadyOpen) return;
-
-            contextMenu.style.top = '8px';
-            contextMenu.style.bottom = 'auto';
-            contextMenu.style.right = '12px';
-            contextMenu.style.left = 'auto';
-            contextMenu.classList.add('show');
-        });
-
-        panelClose.addEventListener('click', closePanel);
-        overlay.addEventListener('click', closePanel);
-
-        document.querySelectorAll('.context-menu-item').forEach(item => {
-            item.addEventListener('click', () => {
-                const action = item.dataset.action;
-                closeAllMenus();
-                const tab = getActiveTab();
-                switch (action) {
-                    case 'back': goBack(); break;
-                    case 'forward': goForward(); break;
-                    case 'refresh': refresh(); break;
-                    case 'newtab':
-                        createTab(tab && !tab.isHome && tab.url ? tab.url : null);
-                        break;
-                    case 'bookmark': bookmarkBtn.click(); break;
-                    case 'history': openPanel('history'); break;
-                    case 'nightmode':
-                        lightMode = !lightMode;
-                        document.body.classList.toggle('light-mode', lightMode);
-                        localStorage.setItem('codex256_lightmode', lightMode);
-                        break;
-                    case 'settings': openPanel('settings'); break;
-                }
-            });
-        });
-
-        document.getElementById('bottomBack').addEventListener('click', goBack);
-        document.getElementById('bottomForward').addEventListener('click', goForward);
-        document.getElementById('bottomBookmarks').addEventListener('click', () => openPanel('bookmarks'));
-        document.getElementById('bottomTabs').addEventListener('click', showTabOverview);
-        document.getElementById('bottomMenu').addEventListener('click', (e) => {
-            e.stopPropagation();
-            const isAlreadyOpen = contextMenu.classList.contains('show');
-            closeAllMenus();
-            if (isAlreadyOpen) return;
-
-            contextMenu.style.bottom = '8px';
-            contextMenu.style.top = 'auto';
-            contextMenu.style.right = '12px';
-            contextMenu.style.left = 'auto';
-            contextMenu.classList.add('show');
-        });
-
-        document.getElementById('closeOverview').addEventListener('click', hideTabOverview);
-
-        document.getElementById('retryBtn').addEventListener('click', () => {
-            if (lastFailedUrl) {
-                errorPage.classList.remove('show');
-                browserFrame.style.display = 'block';
-                loadPage(lastFailedUrl, { forceFallback: false });
-            }
-        });
-
-        document.getElementById('proxyRetryBtn').addEventListener('click', () => {
-            if (lastFailedUrl) {
-                errorPage.classList.remove('show');
-                browserFrame.style.display = 'block';
-                loadPage(lastFailedUrl, { forceFallback: true });
-            }
-        });
-
-        document.getElementById('openNewTabBtn').addEventListener('click', () => {
-            if (lastFailedUrl) {
-                createTab(lastFailedUrl);
-            }
-        });
-
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.context-menu') && !e.target.closest('#menuBtn') && !e.target.closest('#bottomMenu')) {
-                contextMenu.classList.remove('show');
-            }
-        });
-
-        document.addEventListener('keydown', (e) => {
-            if (e.ctrlKey || e.metaKey) {
-                switch (e.key.toLowerCase()) {
-                    case 't': e.preventDefault(); createTab(); break;
-                    case 'w': e.preventDefault(); closeTab(activeTabId); break;
-                    case 'l': e.preventDefault(); urlInput.focus(); urlInput.select(); break;
-                    case 'r': e.preventDefault(); refresh(); break;
+                if (input) {
+                    input.value = cleaned;
                 }
             }
-        });
-    </script>
+        }
+    }
+);
+
+
+/* =========================================================
+   BLOCK COUNTER
+   ========================================================= */
+
+function updateBlockedCounter() {
+
+    const elements = [
+        document.getElementById('blockedCount'),
+        document.querySelector('[data-blocked-count]')
+    ];
+
+    elements.forEach(el => {
+        if (el) {
+            el.textContent =
+                String(blockedCount);
+        }
+    });
+}
+
+
+/* =========================================================
+   SETTINGS
+   ========================================================= */
+
+function saveFilterSettings() {
+
+    localStorage.setItem(
+        'codex256_filter_easylist',
+        easyListEnabled
+    );
+
+    localStorage.setItem(
+        'codex256_filter_easyprivacy',
+        easyPrivacyEnabled
+    );
+
+    localStorage.setItem(
+        'codex256_filter_fanboy',
+        fanboyEnabled
+    );
+
+    localStorage.setItem(
+        'codex256_url_track_queries',
+        trackQueriesEnabled
+    );
+
+    localStorage.setItem(
+        'codex256_url_amp_redirects',
+        ampRedirectsEnabled
+    );
+}
+
+
+/* =========================================================
+   AUTOMATIC DYNAMIC CLEANING
+   ========================================================= */
+
+setInterval(() => {
+
+    try {
+        const frame =
+            document.getElementById('browserFrame');
+
+        if (!frame) return;
+
+        const doc = frame.contentDocument;
+
+        if (!doc) return;
+
+        removeCosmeticAds(doc);
+
+        installPopupProtection(frame);
+
+        updateBlockedCounter();
+
+    } catch {}
+
+}, 2500);
+
+
+/* =========================================================
+   GLOBAL POPUP PROTECTION
+   ========================================================= */
+
+document.addEventListener(
+    'click',
+    event => {
+
+        const link =
+            event.target.closest &&
+            event.target.closest('a');
+
+        if (!link) return;
+
+        const href =
+            link.href || '';
+
+        if (href && isProbablyAdUrl(href)) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+
+            blockedCount++;
+            updateBlockedCounter();
+        }
+    },
+    true
+);
+
+
+/* =========================================================
+   KEYBOARD NAVIGATION
+   ========================================================= */
+
+document.addEventListener(
+    'keydown',
+    event => {
+
+        const input =
+            document.getElementById('urlInput');
+
+        if (!input) return;
+
+        if (
+            event.key === 'Enter' &&
+            document.activeElement === input
+        ) {
+            event.preventDefault();
+            navigateTo(input.value);
+        }
+    }
+);
+
+
+/* =========================================================
+   INITIALIZATION
+   ========================================================= */
+
+function initCodex256Protection() {
+
+    saveFilterSettings();
+
+    updateBlockedCounter();
+
+    const input =
+        document.getElementById('urlInput');
+
+    if (input) {
+        input.addEventListener(
+            'keydown',
+            event => {
+                if (event.key === 'Enter') {
+                    navigateTo(input.value);
+                }
+            }
+        );
+    }
+}
+
+if (
+    document.readyState === 'loading'
+) {
+    document.addEventListener(
+        'DOMContentLoaded',
+        initCodex256Protection
+    );
+} else {
+    initCodex256Protection();
+}
+
+</script>
 </body>
 </html>
