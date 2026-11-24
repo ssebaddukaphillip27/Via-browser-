@@ -650,7 +650,7 @@
             </div>
 
             <p class="home-note">
-                Some websites block embedding inside frames or restrict proxy requests. If a site blocks framing, use <strong>Open in new tab</strong>.
+                Powered by your Cloudflare Worker proxy. If a site still blocks framing, use <strong>Open in new tab</strong>.
             </p>
         </div>
 
@@ -665,11 +665,11 @@
             <i class="bi bi-shield-exclamation error-icon"></i>
             <div class="error-title" id="errorTitle">Site can't be embedded here</div>
             <div class="error-message" id="errorMessage">
-                This website blocks loading inside an embedded frame or proxy. Open it directly in a new tab or try proxy mode.
+                This website blocks loading inside an embedded frame or proxy. Open it directly in a new tab or try fallback proxy mode.
             </div>
             <div class="error-actions">
-                <button class="error-btn" id="retryBtn">Retry</button>
-                <button class="error-btn" id="proxyRetryBtn">Try Proxy</button>
+                <button class="error-btn" id="retryBtn">Retry Worker</button>
+                <button class="error-btn" id="proxyRetryBtn">Try Fallback Proxy</button>
                 <button class="error-btn primary" id="openNewTabBtn">Open in new tab</button>
             </div>
         </div>
@@ -746,6 +746,9 @@
     <div class="toast" id="toast"></div>
 
     <script>
+        // Cloudflare Worker Endpoint
+        const WORKER_PROXY = 'https://proxy.psugx.workers.dev/?url=';
+
         // State
         let tabs = [];
         let activeTabId = null;
@@ -754,7 +757,7 @@
         let historyList = JSON.parse(localStorage.getItem('via_history') || '[]');
         let currentEngine = localStorage.getItem('via_engine') || 'google';
         let lightMode = localStorage.getItem('via_lightmode') === 'true';
-        let preferProxy = localStorage.getItem('via_prefer_proxy') === 'true';
+        let useWorkerProxy = localStorage.getItem('via_use_worker') !== 'false';
         let lastFailedUrl = '';
         let loadTimer = null;
 
@@ -762,7 +765,7 @@
             document.body.classList.add('light-mode');
         }
 
-        const CORS_PROXIES = [
+        const FALLBACK_PROXIES = [
             (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
             (url) => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
             (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
@@ -821,7 +824,7 @@
                 historyStack: [],
                 historyIndex: -1,
                 isHome: !url,
-                mode: 'home', // 'home' | 'direct' | 'proxy'
+                mode: 'home', // 'home' | 'worker' | 'direct' | 'fallback'
                 cachedHtml: null
             };
             tabs.push(tab);
@@ -859,13 +862,13 @@
 
             if (tab.isHome) {
                 homePage.style.display = 'flex';
-            } else if (tab.mode === 'proxy' && tab.cachedHtml) {
+            } else if (tab.mode === 'fallback' && tab.cachedHtml) {
                 browserFrame.removeAttribute('src');
                 browserFrame.srcdoc = tab.cachedHtml;
                 browserFrame.style.display = 'block';
             } else if (tab.url) {
                 browserFrame.style.display = 'block';
-                loadPage(tab.url, { forceProxy: tab.mode === 'proxy' });
+                loadPage(tab.url, { forceFallback: tab.mode === 'fallback' });
             }
 
             updateNavButtons();
@@ -925,7 +928,6 @@
                 return trimmed;
             }
 
-            // Domain name or IP/localhost pattern (no spaces)
             if (
                 !trimmed.includes(' ') &&
                 (/^(localhost|\d{1,3}(\.\d{1,3}){3})(:\d+)?(\/.*)?$/i.test(trimmed) ||
@@ -981,48 +983,36 @@
             loaderText.textContent = 'Loading ' + extractDomain(url) + '...';
             simulateLoading();
 
-            const useProxy = options.forceProxy || preferProxy;
-
-            if (!useProxy) {
-                tab.mode = 'direct';
-                browserFrame.removeAttribute('srcdoc');
-                browserFrame.src = url;
-
-                // Detect if iframe fails or refuses to load within a reasonable window
-                loadTimer = setTimeout(() => {
-                    if (getActiveTab()?.id !== tab.id || tab.isHome) return;
-                    let blockedOrStalled = false;
-                    try {
-                        // Same-origin check: if accessible, verify if it's an empty/error shell
-                        const doc = browserFrame.contentDocument;
-                        if (doc && (!doc.body || doc.body.innerHTML.trim() === '')) {
-                            blockedOrStalled = true;
-                        }
-                    } catch {
-                        // Cross-origin frame: many sites set X-Frame-Options/CSP silently without firing onload
-                        // Give cross-origin sites a bit longer before showing helper prompt
-                    }
-
-                    finishLoadingVisual();
-                    if (blockedOrStalled) {
-                        showFrameBlocked(url, 'This site could not be loaded inside the embedded frame.');
-                    }
-                }, 4500);
+            if (options.forceFallback) {
+                await loadViaFallbackProxies(url, tab);
                 return;
             }
 
-            await loadViaProxy(url, tab);
+            if (useWorkerProxy) {
+                tab.mode = 'worker';
+                browserFrame.removeAttribute('srcdoc');
+                browserFrame.src = WORKER_PROXY + encodeURIComponent(url);
+            } else {
+                tab.mode = 'direct';
+                browserFrame.removeAttribute('srcdoc');
+                browserFrame.src = url;
+            }
+
+            loadTimer = setTimeout(() => {
+                if (getActiveTab()?.id !== tab.id || tab.isHome) return;
+                finishLoadingVisual();
+            }, 7000);
         }
 
-        async function loadViaProxy(url, tab) {
-            tab.mode = 'proxy';
+        async function loadViaFallbackProxies(url, tab) {
+            tab.mode = 'fallback';
             let html = null;
 
-            for (let i = 0; i < CORS_PROXIES.length; i++) {
+            for (let i = 0; i < FALLBACK_PROXIES.length; i++) {
                 if (getActiveTab()?.id !== tab.id) return;
                 try {
-                    loaderText.textContent = `Fetching via proxy (${i + 1}/${CORS_PROXIES.length})...`;
-                    const proxyUrl = CORS_PROXIES[i](url);
+                    loaderText.textContent = `Trying fallback proxy (${i + 1}/${FALLBACK_PROXIES.length})...`;
+                    const proxyUrl = FALLBACK_PROXIES[i](url);
                     const response = await fetch(proxyUrl, {
                         signal: AbortSignal.timeout(12000)
                     });
@@ -1033,7 +1023,7 @@
                         break;
                     }
                 } catch (err) {
-                    console.warn(`Proxy ${i + 1} failed:`, err.message);
+                    console.warn(`Fallback proxy ${i + 1} failed:`, err.message);
                 }
             }
 
@@ -1056,7 +1046,7 @@
             } else {
                 showFrameBlocked(
                     url,
-                    `Couldn't load ${extractDomain(url)} through proxies. The site may block proxy requests or require direct opening.`
+                    `Couldn't load ${extractDomain(url)}. The site may block proxy requests or require opening in a new tab.`
                 );
             }
         }
@@ -1101,14 +1091,30 @@
         }
 
         window.addEventListener('message', (event) => {
-            if (event.data && event.data.type === 'VIA_NAVIGATE' && event.data.url) {
+            if (!event.data) return;
+
+            if (event.data.type === 'VIA_NAVIGATE' && event.data.url) {
                 navigateTo(event.data.url);
+            }
+
+            if (event.data.type === 'VIA_SYNC') {
+                const tab = getActiveTab();
+                if (!tab) return;
+                if (event.data.url && tab.url !== event.data.url) {
+                    tab.url = event.data.url;
+                    urlInput.value = event.data.url;
+                    updateUrlIcon(event.data.url, false);
+                }
+                if (event.data.title) {
+                    tab.title = event.data.title;
+                    renderTabs();
+                }
             }
         });
 
         browserFrame.addEventListener('load', () => {
             const tab = getActiveTab();
-            if (!tab || tab.isHome || tab.mode !== 'direct') return;
+            if (!tab || tab.isHome) return;
             clearTimeout(loadTimer);
             finishLoadingVisual();
 
@@ -1119,16 +1125,16 @@
                     renderTabs();
                 }
             } catch {
-                // Cross-origin title is restricted; keep domain title
+                // Cross-origin title is handled via VIA_SYNC or domain fallback
             }
         });
 
         browserFrame.addEventListener('error', () => {
             const tab = getActiveTab();
-            if (!tab || tab.isHome || tab.mode !== 'direct') return;
+            if (!tab || tab.isHome) return;
             clearTimeout(loadTimer);
             finishLoadingVisual();
-            showFrameBlocked(tab.url, `Failed to load ${extractDomain(tab.url)} directly.`);
+            showFrameBlocked(tab.url, `Failed to load ${extractDomain(tab.url)}.`);
         });
 
         function showFrameBlocked(url, message) {
@@ -1205,7 +1211,7 @@
             tab.cachedHtml = null;
             errorPage.classList.remove('show');
             browserFrame.style.display = 'block';
-            loadPage(tab.url, { forceProxy: tab.mode === 'proxy' });
+            loadPage(tab.url, { forceFallback: tab.mode === 'fallback' });
         }
 
         function updateNavButtons() {
@@ -1344,12 +1350,12 @@
                         </div>
                         <div class="toggle ${lightMode ? 'active' : ''}" id="lightToggle"></div>
                     </div>
-                    <div class="settings-item" id="proxyModeToggle">
+                    <div class="settings-item" id="workerModeToggle">
                         <div class="settings-item-left">
-                            <i class="bi bi-shield-lock"></i>
-                            <span class="settings-item-label">Prefer Proxy Fetch</span>
+                            <i class="bi bi-cloud-check"></i>
+                            <span class="settings-item-label">Use Worker Proxy</span>
                         </div>
-                        <div class="toggle ${preferProxy ? 'active' : ''}" id="proxyToggle"></div>
+                        <div class="toggle ${useWorkerProxy ? 'active' : ''}" id="workerToggle"></div>
                     </div>
                 </div>
                 <div class="settings-group">
@@ -1382,7 +1388,7 @@
                     <div class="settings-item">
                         <div class="settings-item-left">
                             <i class="bi bi-info-circle"></i>
-                            <span class="settings-item-label">Via Browser v1.2</span>
+                            <span class="settings-item-label">Via Browser v1.3</span>
                         </div>
                     </div>
                 </div>
@@ -1395,11 +1401,11 @@
                 localStorage.setItem('via_lightmode', lightMode);
             });
 
-            document.getElementById('proxyModeToggle').addEventListener('click', () => {
-                preferProxy = !preferProxy;
-                document.getElementById('proxyToggle').classList.toggle('active', preferProxy);
-                localStorage.setItem('via_prefer_proxy', preferProxy);
-                showToast(preferProxy ? 'Proxy fetch enabled' : 'Direct frame loading enabled');
+            document.getElementById('workerModeToggle').addEventListener('click', () => {
+                useWorkerProxy = !useWorkerProxy;
+                document.getElementById('workerToggle').classList.toggle('active', useWorkerProxy);
+                localStorage.setItem('via_use_worker', useWorkerProxy);
+                showToast(useWorkerProxy ? 'Cloudflare Worker proxy enabled' : 'Direct frame mode enabled');
             });
 
             document.getElementById('clearHistoryBtn').addEventListener('click', () => {
@@ -1611,7 +1617,7 @@
             if (lastFailedUrl) {
                 errorPage.classList.remove('show');
                 browserFrame.style.display = 'block';
-                loadPage(lastFailedUrl, { forceProxy: false });
+                loadPage(lastFailedUrl, { forceFallback: false });
             }
         });
 
@@ -1619,7 +1625,7 @@
             if (lastFailedUrl) {
                 errorPage.classList.remove('show');
                 browserFrame.style.display = 'block';
-                loadPage(lastFailedUrl, { forceProxy: true });
+                loadPage(lastFailedUrl, { forceFallback: true });
             }
         });
 
