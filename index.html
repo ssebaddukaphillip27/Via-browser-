@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Via Browser</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
@@ -31,14 +31,19 @@
             --shadow: 0 4px 20px rgba(0,0,0,0.1);
         }
 
+        html, body {
+            width: 100%;
+            max-width: 100vw;
+            height: 100dvh;
+            overflow: hidden;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: var(--bg-primary);
             color: var(--text-primary);
-            height: 100vh;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
             transition: background 0.3s ease, color 0.3s ease;
         }
 
@@ -52,6 +57,7 @@
             gap: 4px;
             overflow-x: auto;
             scrollbar-width: none;
+            flex-shrink: 0;
         }
         .tab-bar::-webkit-scrollbar { display: none; }
 
@@ -101,6 +107,7 @@
             background: var(--bg-secondary);
             border-bottom: 1px solid var(--border);
             gap: 8px;
+            flex-shrink: 0;
         }
 
         .nav-btn {
@@ -116,6 +123,7 @@
 
         .url-bar {
             flex: 1;
+            min-width: 0;
             display: flex;
             align-items: center;
             background: var(--bg-primary);
@@ -133,13 +141,15 @@
             color: var(--text-secondary); font-size: 13px; flex-shrink: 0;
         }
         .url-input {
-            flex: 1; border: none; background: transparent;
+            flex: 1; min-width: 0; border: none; background: transparent;
             color: var(--text-primary); font-size: 13px; outline: none;
         }
         .url-input::placeholder { color: var(--text-secondary); }
 
         .content-area {
             flex: 1;
+            width: 100%;
+            min-height: 0;
             position: relative;
             overflow: hidden;
             background: var(--bg-primary);
@@ -159,21 +169,22 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
             background: var(--bg-primary);
-            padding: 40px 20px;
+            padding: 28px 20px 32px;
             overflow-y: auto;
         }
 
         .home-logo {
-            font-size: 48px;
+            font-size: 44px;
             font-weight: 700;
             color: var(--accent);
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             letter-spacing: -1px;
+            line-height: 1.1;
         }
         .home-logo span { color: var(--text-primary); }
-        .home-subtitle { color: var(--text-secondary); font-size: 14px; margin-bottom: 32px; }
+        .home-subtitle { color: var(--text-secondary); font-size: 14px; margin-bottom: 24px; }
 
         .home-search {
             width: 100%;
@@ -183,9 +194,9 @@
             background: var(--bg-secondary);
             border: 1px solid var(--border);
             border-radius: 24px;
-            padding: 12px 20px;
-            gap: 12px;
-            margin-bottom: 36px;
+            padding: 12px 18px;
+            gap: 10px;
+            margin-bottom: 28px;
             transition: all 0.3s;
         }
         .home-search:focus-within {
@@ -193,7 +204,7 @@
             box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.15);
         }
         .home-search input {
-            flex: 1; border: none; background: transparent;
+            flex: 1; min-width: 0; border: none; background: transparent;
             color: var(--text-primary); font-size: 15px; outline: none;
         }
         .home-search input::placeholder { color: var(--text-secondary); }
@@ -209,15 +220,15 @@
 
         .quick-links {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
-            gap: 16px;
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            gap: 14px;
             max-width: 580px;
             width: 100%;
-            margin-bottom: 24px;
+            margin-bottom: 22px;
         }
         .quick-link {
             display: flex; flex-direction: column; align-items: center;
-            gap: 8px; padding: 14px 8px;
+            gap: 8px; padding: 12px 6px;
             border-radius: 12px; cursor: pointer;
             transition: all 0.2s; text-decoration: none;
         }
@@ -334,9 +345,10 @@
 
         .bottom-bar {
             display: flex; align-items: center; justify-content: space-around;
-            padding: 8px 16px;
+            padding: 6px 12px;
             background: var(--bg-secondary);
             border-top: 1px solid var(--border);
+            flex-shrink: 0;
         }
         .bottom-btn {
             display: flex; flex-direction: column; align-items: center;
@@ -359,17 +371,27 @@
             position: absolute;
             background: var(--bg-secondary);
             border: 1px solid var(--border);
-            border-radius: 10px;
+            border-radius: 12px;
             padding: 6px;
-            min-width: 190px;
+            min-width: 200px;
+            max-width: calc(100% - 24px);
+            max-height: calc(100% - 16px);
+            overflow-y: auto;
             box-shadow: var(--shadow);
             z-index: 200;
             display: none;
+            opacity: 0;
+            transform: translateY(-6px);
+            transition: opacity 0.16s ease, transform 0.16s ease;
         }
-        .context-menu.show { display: block; }
+        .context-menu.show {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
         .context-menu-item {
             display: flex; align-items: center; gap: 10px;
-            padding: 8px 12px; border-radius: 6px;
+            padding: 9px 12px; border-radius: 8px;
             cursor: pointer; font-size: 13px;
             color: var(--text-primary); transition: all 0.15s;
         }
@@ -708,11 +730,9 @@
     <div class="toast" id="toast"></div>
 
     <script>
-        // Cloudflare Worker Endpoint
         const WORKER_PROXY = 'https://proxy.psugx.workers.dev/?url=';
         const BING_SEARCH_URL = 'https://www.bing.com/search?q=';
 
-        // State
         let tabs = [];
         let activeTabId = null;
         let tabCounter = 0;
@@ -735,7 +755,6 @@
             (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
         ];
 
-        // Elements
         const tabBar = document.getElementById('tabBar');
         const addTabBtn = document.getElementById('addTabBtn');
         const backBtn = document.getElementById('backBtn');
@@ -766,7 +785,6 @@
         const errorTitle = document.getElementById('errorTitle');
         const errorMessage = document.getElementById('errorMessage');
 
-        // Initialize
         createTab();
 
         function createTab(url = null) {
@@ -780,7 +798,7 @@
                 historyStack: [],
                 historyIndex: -1,
                 isHome: !url,
-                mode: 'home', // 'home' | 'worker' | 'direct' | 'fallback'
+                mode: 'home',
                 cachedHtml: null
             };
             tabs.push(tab);
@@ -1012,10 +1030,24 @@
 
         function prepareProxiedHtml(html, originalUrl) {
             let output = html.replace(/<base[^>]*>/gi, '');
+            const fitStyle = `<style>
+                html, body {
+                    max-width: 100% !important;
+                    width: 100% !important;
+                    margin: 0 auto !important;
+                    box-sizing: border-box !important;
+                    overflow-x: hidden !important;
+                }
+                img, video, canvas, iframe, table {
+                    max-width: 100% !important;
+                    height: auto !important;
+                }
+            </style>`;
+
             try {
                 const parsed = new URL(originalUrl);
                 const baseHref = parsed.origin + parsed.pathname.replace(/[^/]*$/, '');
-                const baseTag = `<base href="${escapeHtml(baseHref)}">`;
+                const baseTag = `<base href="${escapeHtml(baseHref)}">${fitStyle}`;
                 if (/<head[^>]*>/i.test(output)) {
                     output = output.replace(/<head[^>]*>/i, (m) => m + baseTag);
                 } else if (/<html[^>]*>/i.test(output)) {
@@ -1024,7 +1056,7 @@
                     output = '<head>' + baseTag + '</head>' + output;
                 }
             } catch {
-                // Ignore base URL parse errors
+                output = '<head>' + fitStyle + '</head>' + output;
             }
 
             const helperScript = `<script>
@@ -1197,7 +1229,6 @@
             });
         }
 
-        // Bookmarks
         function addToBookmarks(url, title) {
             if (bookmarks.find(b => b.url === url)) {
                 showToast('Already bookmarked');
@@ -1232,7 +1263,6 @@
             localStorage.setItem('via_history', JSON.stringify(historyList));
         }
 
-        // Panels
         function openPanel(type) {
             closeAllMenus();
             hideTabOverview();
@@ -1354,7 +1384,7 @@
                     <div class="settings-item">
                         <div class="settings-item-left">
                             <i class="bi bi-info-circle"></i>
-                            <span class="settings-item-label">Via Browser v1.7</span>
+                            <span class="settings-item-label">Via Browser v1.8</span>
                         </div>
                     </div>
                 </div>
@@ -1388,7 +1418,6 @@
             });
         }
 
-        // Tab Overview
         function showTabOverview() {
             closeAllMenus();
             closePanel();
@@ -1456,7 +1485,6 @@
             contextMenu.classList.remove('show');
         }
 
-        // Event Listeners
         addTabBtn.addEventListener('click', () => createTab());
 
         urlInput.addEventListener('keydown', (e) => {
@@ -1487,13 +1515,14 @@
 
         menuBtn.addEventListener('click', (e) => {
             e.stopPropagation();
+            const isAlreadyOpen = contextMenu.classList.contains('show');
             closeAllMenus();
-            const rect = menuBtn.getBoundingClientRect();
-            const contentRect = contentArea.getBoundingClientRect();
-            contextMenu.style.top = (rect.bottom - contentRect.top + 4) + 'px';
+            if (isAlreadyOpen) return;
+
+            contextMenu.style.top = '8px';
+            contextMenu.style.bottom = 'auto';
             contextMenu.style.right = '12px';
             contextMenu.style.left = 'auto';
-            contextMenu.style.bottom = 'auto';
             contextMenu.classList.add('show');
         });
 
@@ -1530,10 +1559,11 @@
         document.getElementById('bottomTabs').addEventListener('click', showTabOverview);
         document.getElementById('bottomMenu').addEventListener('click', (e) => {
             e.stopPropagation();
+            const isAlreadyOpen = contextMenu.classList.contains('show');
             closeAllMenus();
-            const rect = e.currentTarget.getBoundingClientRect();
-            const contentRect = contentArea.getBoundingClientRect();
-            contextMenu.style.bottom = (contentRect.bottom - rect.top + 4) + 'px';
+            if (isAlreadyOpen) return;
+
+            contextMenu.style.bottom = '8px';
             contextMenu.style.top = 'auto';
             contextMenu.style.right = '12px';
             contextMenu.style.left = 'auto';
