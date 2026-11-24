@@ -769,6 +769,7 @@ let ampRedirectsEnabled = localStorage.getItem('codex256_url_amp_redirects') !==
 
 let lastFailedUrl = '';
 let loadTimer = null;
+let workerFallbackTimer = null;
 let blockedCount = 0;
 
 localStorage.setItem('codex256_engine', 'bing');
@@ -1063,6 +1064,7 @@ function switchTab(id) {
     if (!tab) return;
 
     clearTimeout(loadTimer);
+    clearTimeout(workerFallbackTimer);
     urlInput.value = tab.isHome ? '' : tab.url;
     if (tab.isHome) homeSearchInput.value = '';
     updateUrlIcon(tab.url, tab.isHome);
@@ -1325,29 +1327,112 @@ async function loadPage(url, options = {}) {
 
     if (isBlockedDomainUrl(finalUrl)) {
         finishLoadingVisual();
-        showFrameBlocked(finalUrl, 'Blocked by Codex256Browser ad, tracker, or redirect filter.');
+        showFrameBlocked(
+            finalUrl,
+            'Blocked by Codex256Browser ad, tracker, or redirect filter.'
+        );
         return;
     }
 
     clearTimeout(loadTimer);
+    clearTimeout(workerFallbackTimer);
+
     lastFailedUrl = finalUrl;
+
     pageLoader.classList.add('show');
     errorPage.classList.remove('show');
-    loaderText.textContent = 'Loading ' + extractDomain(finalUrl) + '...';
+
+    loaderText.textContent =
+        'Loading ' + extractDomain(finalUrl) + '...';
+
     simulateLoading();
 
+    /*
+     * FALLBACK MODE
+     * If the user specifically requested fallback,
+     * don't use the Cloudflare Worker.
+     */
     if (options.forceFallback) {
         await loadViaFallbackProxies(finalUrl, tab);
         return;
     }
 
-    tab.mode = useWorkerProxy ? 'worker' : 'direct';
-    browserFrame.removeAttribute('srcdoc');
-    browserFrame.src = useWorkerProxy ? WORKER_PROXY + encodeURIComponent(finalUrl) : finalUrl;
+    /*
+     * DIRECT MODE
+     */
+    if (!useWorkerProxy) {
+        tab.mode = 'direct';
 
-    loadTimer = setTimeout(() => {
-        if (getActiveTab()?.id === tab.id && !tab.isHome) {
+        browserFrame.removeAttribute('srcdoc');
+        browserFrame.src = finalUrl;
+        browserFrame.style.display = 'block';
+
+        loadTimer = setTimeout(() => {
+            if (getActiveTab()?.id !== tab.id || tab.isHome) return;
+
             finishLoadingVisual();
+        }, 12000);
+
+        return;
+    }
+
+    /*
+     * WORKER MODE
+     */
+    tab.mode = 'worker';
+
+    browserFrame.removeAttribute('srcdoc');
+    browserFrame.style.display = 'block';
+
+    const workerUrl =
+        WORKER_PROXY + encodeURIComponent(finalUrl);
+
+    browserFrame.src = workerUrl;
+
+    /*
+     * IMPORTANT:
+     * Some Worker failures do not trigger iframe.onerror.
+     * Therefore we give the Worker enough time to respond,
+     * then automatically switch to fallback proxies.
+     */
+    workerFallbackTimer = setTimeout(async () => {
+        if (getActiveTab()?.id !== tab.id || tab.isHome) return;
+
+        /*
+         * If the iframe has successfully loaded something,
+         * don't unnecessarily switch to fallback.
+         */
+        try {
+            if (
+                browserFrame.contentDocument &&
+                browserFrame.contentDocument.documentElement &&
+                browserFrame.contentDocument.documentElement.innerHTML.trim()
+            ) {
+                finishLoadingVisual();
+                return;
+            }
+        } catch {}
+
+        loaderText.textContent =
+            'Worker unavailable. Trying fallback proxy...';
+
+        await loadViaFallbackProxies(finalUrl, tab);
+
+    }, 12000);
+
+    /*
+     * Safety timer.
+     */
+    loadTimer = setTimeout(() => {
+        if (getActiveTab()?.id !== tab.id || tab.isHome) return;
+
+        /*
+         * Do not immediately show the error page.
+         * The fallback timer is responsible for recovery.
+         */
+        if (tab.mode === 'worker') {
+            loaderText.textContent =
+                'Waiting for proxy response...';
         }
     }, 8000);
 }
@@ -1400,6 +1485,7 @@ function goHome() {
     const tab = getActiveTab();
     if (!tab) return;
     clearTimeout(loadTimer);
+    clearTimeout(workerFallbackTimer);
     tab.isHome = true;
     tab.mode = 'home';
     tab.title = 'New Tab';
@@ -1766,30 +1852,66 @@ function hideTabOverview() {
 
 browserFrame.addEventListener('load', () => {
     const tab = getActiveTab();
+
     if (!tab || tab.isHome) return;
+
     clearTimeout(loadTimer);
+
+    /*
+     * A successful Worker response means we no longer
+     * need the automatic fallback timer.
+     */
+    if (tab.mode === 'worker') {
+        clearTimeout(workerFallbackTimer);
+    }
+
     finishLoadingVisual();
 
     try {
         const doc = browserFrame.contentDocument;
+
         if (doc) {
             removeCosmeticAds(doc);
             installPopupProtection(browserFrame);
+
             if (doc.title && doc.title.trim()) {
                 tab.title = doc.title.trim();
                 renderTabs();
             }
         }
     } catch {}
+
     updateBlockedCounter();
 });
 
-browserFrame.addEventListener('error', () => {
+browserFrame.addEventListener('error', async () => {
     const tab = getActiveTab();
+
     if (!tab || tab.isHome) return;
+
     clearTimeout(loadTimer);
+
+    /*
+     * If the Worker fails, automatically try the
+     * fallback proxies instead of immediately showing
+     * the error page.
+     */
+    if (tab.mode === 'worker') {
+        clearTimeout(workerFallbackTimer);
+
+        loaderText.textContent =
+            'Worker failed. Trying fallback proxy...';
+
+        await loadViaFallbackProxies(tab.url, tab);
+        return;
+    }
+
     finishLoadingVisual();
-    showFrameBlocked(tab.url, `Failed to load ${extractDomain(tab.url)}.`);
+
+    showFrameBlocked(
+        tab.url,
+        `Failed to load ${extractDomain(tab.url)}.`
+    );
 });
 
 window.addEventListener('message', (event) => {
