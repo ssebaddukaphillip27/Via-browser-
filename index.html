@@ -199,14 +199,13 @@
         .home-search input::placeholder { color: var(--text-secondary); }
         .home-search .search-icon { color: var(--text-secondary); font-size: 18px; }
 
-        .search-engine-selector {
+        .search-engine-badge {
             display: flex; align-items: center; gap: 6px;
             padding: 5px 10px; border-radius: 12px;
-            background: var(--bg-tertiary); cursor: pointer;
-            font-size: 12px; color: var(--text-secondary);
-            transition: all 0.2s; flex-shrink: 0;
+            background: var(--bg-tertiary);
+            font-size: 12px; color: var(--text-primary);
+            flex-shrink: 0;
         }
-        .search-engine-selector:hover { color: var(--text-primary); }
 
         .quick-links {
             display: grid;
@@ -402,27 +401,6 @@
         }
         .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-        .engine-dropdown {
-            position: absolute;
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 6px;
-            min-width: 170px;
-            box-shadow: var(--shadow);
-            z-index: 200;
-            display: none;
-        }
-        .engine-dropdown.show { display: block; }
-        .engine-option {
-            display: flex; align-items: center; gap: 10px;
-            padding: 8px 12px; border-radius: 6px;
-            cursor: pointer; font-size: 13px;
-            transition: all 0.15s;
-        }
-        .engine-option:hover { background: var(--hover); }
-        .engine-option.active { color: var(--accent); }
-
         .tab-overview {
             position: absolute; top: 0; left: 0;
             width: 100%; height: 100%;
@@ -587,7 +565,7 @@
         </button>
         <div class="url-bar">
             <i class="bi bi-globe" id="urlIcon"></i>
-            <input type="text" class="url-input" id="urlInput" placeholder="Search or enter URL" spellcheck="false">
+            <input type="text" class="url-input" id="urlInput" placeholder="Search Bing or enter URL" spellcheck="false">
         </div>
         <button class="nav-btn" id="bookmarkBtn" title="Bookmark">
             <i class="bi bi-star"></i>
@@ -606,11 +584,10 @@
 
             <div class="home-search" id="homeSearch">
                 <i class="bi bi-search search-icon"></i>
-                <input type="text" id="homeSearchInput" placeholder="Search the web or type a URL..." spellcheck="false">
-                <div class="search-engine-selector" id="engineSelector">
+                <input type="text" id="homeSearchInput" placeholder="Search Bing or type a URL..." spellcheck="false">
+                <div class="search-engine-badge" title="Search Engine: Bing">
                     <i class="bi bi-microsoft"></i>
-                    <span id="engineName">Bing</span>
-                    <i class="bi bi-chevron-down" style="font-size:10px"></i>
+                    <span>Bing</span>
                 </div>
             </div>
 
@@ -650,7 +627,7 @@
             </div>
 
             <p class="home-note">
-                Powered by your Cloudflare Worker proxy. Bing is set by default for smooth search; use <strong>Open in new tab</strong> if a site blocks proxy framing.
+                Powered by Bing search and your Cloudflare Worker proxy. Use <strong>Open in new tab</strong> if a site blocks proxy framing.
             </p>
         </div>
 
@@ -703,21 +680,6 @@
             <div class="context-menu-item" data-action="nightmode"><i class="bi bi-moon"></i> Light / Night Mode</div>
             <div class="context-menu-item" data-action="settings"><i class="bi bi-gear"></i> Settings</div>
         </div>
-
-        <div class="engine-dropdown" id="engineDropdown">
-            <div class="engine-option active" data-engine="bing">
-                <i class="bi bi-microsoft"></i> Bing
-            </div>
-            <div class="engine-option" data-engine="google">
-                <i class="bi bi-google"></i> Google
-            </div>
-            <div class="engine-option" data-engine="duckduckgo">
-                <i class="bi bi-shield-check"></i> DuckDuckGo
-            </div>
-            <div class="engine-option" data-engine="yahoo">
-                <i class="bi bi-yahoo"></i> Yahoo
-            </div>
-        </div>
     </div>
 
     <div class="bottom-bar">
@@ -748,6 +710,7 @@
     <script>
         // Cloudflare Worker Endpoint
         const WORKER_PROXY = 'https://proxy.psugx.workers.dev/?url=';
+        const BING_SEARCH_URL = 'https://www.bing.com/search?q=';
 
         // State
         let tabs = [];
@@ -755,11 +718,12 @@
         let tabCounter = 0;
         let bookmarks = JSON.parse(localStorage.getItem('via_bookmarks') || '[]');
         let historyList = JSON.parse(localStorage.getItem('via_history') || '[]');
-        let currentEngine = localStorage.getItem('via_engine') || 'bing';
         let lightMode = localStorage.getItem('via_lightmode') === 'true';
         let useWorkerProxy = localStorage.getItem('via_use_worker') !== 'false';
         let lastFailedUrl = '';
         let loadTimer = null;
+
+        localStorage.setItem('via_engine', 'bing');
 
         if (lightMode) {
             document.body.classList.add('light-mode');
@@ -770,13 +734,6 @@
             (url) => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
             (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
         ];
-
-        const searchEngines = {
-            bing: { name: 'Bing', icon: 'bi-microsoft', url: 'https://www.bing.com/search?q=' },
-            google: { name: 'Google', icon: 'bi-google', url: 'https://www.google.com/search?q=' },
-            duckduckgo: { name: 'DuckDuckGo', icon: 'bi-shield-check', url: 'https://html.duckduckgo.com/html/?q=' },
-            yahoo: { name: 'Yahoo', icon: 'bi-yahoo', url: 'https://search.yahoo.com/search?p=' }
-        };
 
         // Elements
         const tabBar = document.getElementById('tabBar');
@@ -799,8 +756,6 @@
         const panelContent = document.getElementById('panelContent');
         const panelClose = document.getElementById('panelClose');
         const contextMenu = document.getElementById('contextMenu');
-        const engineDropdown = document.getElementById('engineDropdown');
-        const engineSelector = document.getElementById('engineSelector');
         const homeSearchInput = document.getElementById('homeSearchInput');
         const tabOverview = document.getElementById('tabOverview');
         const tabGrid = document.getElementById('tabGrid');
@@ -812,7 +767,6 @@
         const errorMessage = document.getElementById('errorMessage');
 
         // Initialize
-        updateEngineUI();
         createTab();
 
         function createTab(url = null) {
@@ -936,7 +890,7 @@
                 return 'https://' + trimmed;
             }
 
-            return searchEngines[currentEngine].url + encodeURIComponent(trimmed);
+            return BING_SEARCH_URL + encodeURIComponent(trimmed);
         }
 
         async function navigateTo(input, options = {}) {
@@ -1360,12 +1314,12 @@
                 </div>
                 <div class="settings-group">
                     <div class="settings-group-title">Search</div>
-                    <div class="settings-item" id="searchEngineSetting">
+                    <div class="settings-item">
                         <div class="settings-item-left">
-                            <i class="bi bi-search"></i>
+                            <i class="bi bi-microsoft"></i>
                             <span class="settings-item-label">Search Engine</span>
                         </div>
-                        <span style="font-size:12px;color:var(--text-secondary)">${searchEngines[currentEngine].name}</span>
+                        <span style="font-size:12px;color:var(--text-secondary)">Bing</span>
                     </div>
                 </div>
                 <div class="settings-group">
@@ -1388,7 +1342,7 @@
                     <div class="settings-item">
                         <div class="settings-item-left">
                             <i class="bi bi-info-circle"></i>
-                            <span class="settings-item-label">Via Browser v1.4</span>
+                            <span class="settings-item-label">Via Browser v1.5</span>
                         </div>
                     </div>
                 </div>
@@ -1419,11 +1373,6 @@
                 localStorage.setItem('via_bookmarks', '[]');
                 updateBookmarkIcon();
                 showToast('Bookmarks cleared');
-            });
-
-            document.getElementById('searchEngineSetting').addEventListener('click', () => {
-                closePanel();
-                showEngineDropdown();
             });
         }
 
@@ -1466,23 +1415,6 @@
             tabOverview.classList.remove('show');
         }
 
-        function showEngineDropdown() {
-            const rect = engineSelector.getBoundingClientRect();
-            const contentRect = contentArea.getBoundingClientRect();
-            engineDropdown.style.top = (rect.bottom - contentRect.top + 4) + 'px';
-            engineDropdown.style.left = (rect.left - contentRect.left) + 'px';
-            engineDropdown.classList.add('show');
-        }
-
-        function updateEngineUI() {
-            const engine = searchEngines[currentEngine] || searchEngines.bing;
-            document.getElementById('engineName').textContent = engine.name;
-            engineSelector.querySelector('i:first-child').className = `bi ${engine.icon}`;
-            document.querySelectorAll('.engine-option').forEach(opt => {
-                opt.classList.toggle('active', opt.dataset.engine === currentEngine);
-            });
-        }
-
         function extractDomain(url) {
             try {
                 const u = new URL(url);
@@ -1509,7 +1441,6 @@
 
         function closeAllMenus() {
             contextMenu.classList.remove('show');
-            engineDropdown.classList.remove('show');
         }
 
         // Event Listeners
@@ -1551,21 +1482,6 @@
             contextMenu.style.left = 'auto';
             contextMenu.style.bottom = 'auto';
             contextMenu.classList.add('show');
-        });
-
-        engineSelector.addEventListener('click', (e) => {
-            e.stopPropagation();
-            closeAllMenus();
-            showEngineDropdown();
-        });
-
-        document.querySelectorAll('.engine-option').forEach(opt => {
-            opt.addEventListener('click', () => {
-                currentEngine = opt.dataset.engine;
-                localStorage.setItem('via_engine', currentEngine);
-                updateEngineUI();
-                engineDropdown.classList.remove('show');
-            });
         });
 
         panelClose.addEventListener('click', closePanel);
@@ -1642,9 +1558,6 @@
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.context-menu') && !e.target.closest('#menuBtn') && !e.target.closest('#bottomMenu')) {
                 contextMenu.classList.remove('show');
-            }
-            if (!e.target.closest('.engine-dropdown') && !e.target.closest('#engineSelector')) {
-                engineDropdown.classList.remove('show');
             }
         });
 
