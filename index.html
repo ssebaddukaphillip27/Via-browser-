@@ -358,22 +358,24 @@
         }
         .settings-item {
             display: flex; align-items: center; justify-content: space-between;
-            padding: 12px; border-radius: 8px; cursor: pointer;
-            transition: all 0.2s;
+            padding: 11px 12px; border-radius: 8px; cursor: pointer;
+            transition: all 0.2s; gap: 10px;
         }
         .settings-item:hover { background: var(--hover); }
-        .settings-item-left { display: flex; align-items: center; gap: 12px; }
+        .settings-item-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
         .settings-item-left i {
             font-size: 16px; color: var(--text-secondary);
-            width: 20px; text-align: center;
+            width: 20px; text-align: center; flex-shrink: 0;
         }
+        .settings-item-text { display: flex; flex-direction: column; min-width: 0; }
         .settings-item-label { font-size: 13px; }
+        .settings-item-sub { font-size: 10px; color: var(--text-secondary); line-height: 1.3; margin-top: 2px; }
 
         .toggle {
             width: 40px; height: 22px;
             background: var(--bg-tertiary);
             border-radius: 11px; position: relative;
-            cursor: pointer; transition: all 0.3s;
+            cursor: pointer; transition: all 0.3s; flex-shrink: 0;
         }
         .toggle.active { background: var(--accent); }
         .toggle::after {
@@ -757,6 +759,14 @@
         let historyList = JSON.parse(localStorage.getItem('codex256_history') || '[]');
         let lightMode = localStorage.getItem('codex256_lightmode') === 'true';
         let useWorkerProxy = localStorage.getItem('codex256_use_worker') !== 'false';
+
+        // Filter list & URL modification settings
+        let easyListEnabled = localStorage.getItem('codex256_filter_easylist') !== 'false';
+        let easyPrivacyEnabled = localStorage.getItem('codex256_filter_easyprivacy') !== 'false';
+        let fanboyEnabled = localStorage.getItem('codex256_filter_fanboy') !== 'false';
+        let trackQueriesEnabled = localStorage.getItem('codex256_url_track_queries') !== 'false';
+        let ampRedirectsEnabled = localStorage.getItem('codex256_url_amp_redirects') !== 'false';
+
         let lastFailedUrl = '';
         let loadTimer = null;
 
@@ -765,6 +775,25 @@
         if (lightMode) {
             document.body.classList.add('light-mode');
         }
+
+        const AD_DOMAINS = [
+            'doubleclick.net', 'googlesyndication.com', 'adservice.google.com',
+            'taboola.com', 'outbrain.com', 'advertising.com', 'criteo.com',
+            'pubmatic.com', 'rubiconproject.com', 'openx.net', 'adnxs.com'
+        ];
+
+        const TRACKER_DOMAINS = [
+            'google-analytics.com', 'googletagmanager.com', 'hotjar.com',
+            'mixpanel.com', 'segment.io', 'scorecardresearch.com',
+            'quantserve.com', 'matomo.cloud', 'clarity.ms', 'newrelic.com'
+        ];
+
+        const TRACKING_PARAMS = new Set([
+            'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
+            'utm_id', 'utm_source_platform', 'utm_creative_format', 'utm_marketing_tactic',
+            'fbclid', 'gclid', 'dclid', 'gbraid', 'wbraid', 'msclkid', 'yclid',
+            'mc_cid', 'mc_eid', '_hsenc', '_hsmi', 'igshid', 'si', 'spm', 'scm'
+        ]);
 
         const FALLBACK_PROXIES = [
             (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
@@ -899,6 +928,65 @@
             return div.innerHTML;
         }
 
+        function cleanUrl(rawUrl) {
+            try {
+                const parsed = new URL(rawUrl);
+
+                // Unwrap AMP redirects if enabled
+                if (ampRedirectsEnabled) {
+                    const paramCandidate =
+                        parsed.searchParams.get('amp_url') ||
+                        parsed.searchParams.get('amp_js_v') ? parsed.searchParams.get('amp_url') : null;
+
+                    if (paramCandidate && /^https?:\/\//i.test(paramCandidate)) {
+                        return cleanUrl(paramCandidate);
+                    }
+
+                    if (parsed.hostname.endsWith('cdn.ampproject.org')) {
+                        const parts = parsed.pathname.split('/').filter(Boolean);
+                        const startIdx = (parts[0] === 'c' || parts[0] === 'v') ? 2 : 1;
+                        if (parts.length > startIdx) {
+                            const scheme = parts[startIdx - 1] === 's' ? 'https://' : 'http://';
+                            const unwrapped = scheme + parts.slice(startIdx).join('/') + parsed.search;
+                            return cleanUrl(unwrapped);
+                        }
+                    }
+                }
+
+                // Remove known tracking query parameters if enabled
+                if (trackQueriesEnabled) {
+                    for (const key of [...parsed.searchParams.keys()]) {
+                        const lower = key.toLowerCase();
+                        if (TRACKING_PARAMS.has(lower) || lower.startsWith('utm_')) {
+                            parsed.searchParams.delete(key);
+                        }
+                    }
+                }
+
+                return parsed.toString();
+            } catch {
+                return rawUrl;
+            }
+        }
+
+        function getBlockedDomains() {
+            const blocked = [];
+            if (easyListEnabled) blocked.push(...AD_DOMAINS);
+            if (easyPrivacyEnabled) blocked.push(...TRACKER_DOMAINS);
+            return blocked;
+        }
+
+        function isBlockedDomainUrl(targetUrl) {
+            const blocked = getBlockedDomains();
+            if (!blocked.length) return false;
+            try {
+                const host = new URL(targetUrl).hostname.toLowerCase();
+                return blocked.some(domain => host === domain || host.endsWith('.' + domain));
+            } catch {
+                return false;
+            }
+        }
+
         function updateUrlIcon(url, isHome) {
             if (isHome || !url) {
                 urlIcon.className = 'bi bi-search';
@@ -932,9 +1020,10 @@
         }
 
         async function navigateTo(input, options = {}) {
-            const url = parseInput(input);
-            if (!url) return;
+            const parsedUrl = parseInput(input);
+            if (!parsedUrl) return;
 
+            const finalUrl = cleanUrl(parsedUrl);
             const tab = getActiveTab();
             if (!tab) return;
 
@@ -942,29 +1031,29 @@
             hideTabOverview();
 
             tab.isHome = false;
-            tab.url = url;
-            tab.title = extractDomain(url);
+            tab.url = finalUrl;
+            tab.title = extractDomain(finalUrl);
             tab.cachedHtml = null;
 
             if (!options.skipHistory) {
                 if (tab.historyIndex < tab.historyStack.length - 1) {
                     tab.historyStack = tab.historyStack.slice(0, tab.historyIndex + 1);
                 }
-                tab.historyStack.push(url);
+                tab.historyStack.push(finalUrl);
                 tab.historyIndex = tab.historyStack.length - 1;
-                addToHistory(url, tab.title);
+                addToHistory(finalUrl, tab.title);
             }
 
             homePage.style.display = 'none';
             errorPage.classList.remove('show');
             browserFrame.style.display = 'block';
-            urlInput.value = url;
-            updateUrlIcon(url, false);
+            urlInput.value = finalUrl;
+            updateUrlIcon(finalUrl, false);
             updateNavButtons();
             updateBookmarkIcon();
             renderTabs();
 
-            await loadPage(url, options);
+            await loadPage(finalUrl, options);
         }
 
         async function loadPage(url, options = {}) {
@@ -1048,6 +1137,32 @@
 
         function prepareProxiedHtml(html, originalUrl) {
             let output = html.replace(/<base[^>]*>/gi, '');
+
+            // Strip known ad/tracker tags when EasyList or EasyPrivacy is enabled
+            const blockedDomains = getBlockedDomains();
+            if (blockedDomains.length > 0) {
+                const escapedDomains = blockedDomains.map(d => d.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+                const domainRegex = new RegExp(`https?:\\/\\/([a-z0-9-]+\\.)?(${escapedDomains.join('|')})`, 'i');
+                output = output.replace(
+                    /<(script|iframe|img|embed|object)([^>]*\b(?:src|data-src)=["'][^"']*["'][^>]*)>([\s\S]*?<\/\1>)?/gi,
+                    (match, tag, attrs) => {
+                        const srcMatch = attrs.match(/\b(?:src|data-src)=["']([^"']*)["']/i);
+                        if (srcMatch && domainRegex.test(srcMatch[1])) {
+                            return '';
+                        }
+                        return match;
+                    }
+                );
+            }
+
+            const fanboyCss = fanboyEnabled ? `
+                [class*="social-share"], [class*="share-buttons"], [id*="cookie-banner"],
+                [class*="cookie-consent"], [class*="popup-overlay"], [class*="newsletter-modal"],
+                .addthis_toolbox, .fb-like, .twitter-share-button {
+                    display: none !important;
+                }
+            ` : '';
+
             const fitStyle = `<style>
                 html, body {
                     max-width: 100% !important;
@@ -1060,6 +1175,7 @@
                     max-width: 100% !important;
                     height: auto !important;
                 }
+                ${fanboyCss}
             </style>`;
 
             try {
@@ -1077,18 +1193,87 @@
                 output = '<head>' + fitStyle + '</head>' + output;
             }
 
+            const serializedSettings = JSON.stringify({
+                ampRedirectsEnabled,
+                trackQueriesEnabled,
+                fanboyEnabled,
+                blockedDomains
+            });
+
             const helperScript = `<script>
-                document.addEventListener('click', function(e) {
-                    const link = e.target.closest('a[href]');
-                    if (!link) return;
-                    const href = link.getAttribute('href');
-                    if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
-                    e.preventDefault();
-                    try {
-                        const resolved = new URL(href, document.baseURI).href;
-                        window.parent.postMessage({ type: 'VIA_NAVIGATE', url: resolved }, '*');
-                    } catch (_) {}
-                }, true);
+                (function() {
+                    const CFG = ${serializedSettings};
+                    const TRACK_KEYS = new Set([
+                        'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
+                        'utm_id', 'utm_source_platform', 'utm_creative_format', 'utm_marketing_tactic',
+                        'fbclid', 'gclid', 'dclid', 'gbraid', 'wbraid', 'msclkid', 'yclid',
+                        'mc_cid', 'mc_eid', '_hsenc', '_hsmi', 'igshid', 'si', 'spm', 'scm'
+                    ]);
+
+                    function cleanFrameUrl(raw) {
+                        try {
+                            const u = new URL(raw);
+                            if (CFG.ampRedirectsEnabled) {
+                                const ampParam = u.searchParams.get('amp_url');
+                                if (ampParam && /^https?:\\/\\//i.test(ampParam)) {
+                                    return cleanFrameUrl(ampParam);
+                                }
+                                if (u.hostname.endsWith('cdn.ampproject.org')) {
+                                    const parts = u.pathname.split('/').filter(Boolean);
+                                    const startIdx = (parts[0] === 'c' || parts[0] === 'v') ? 2 : 1;
+                                    if (parts.length > startIdx) {
+                                        const scheme = parts[startIdx - 1] === 's' ? 'https://' : 'http://';
+                                        return cleanFrameUrl(scheme + parts.slice(startIdx).join('/') + u.search);
+                                    }
+                                }
+                            }
+                            if (CFG.trackQueriesEnabled) {
+                                for (const k of [...u.searchParams.keys()]) {
+                                    const lk = k.toLowerCase();
+                                    if (TRACK_KEYS.has(lk) || lk.startsWith('utm_')) {
+                                        u.searchParams.delete(k);
+                                    }
+                                }
+                            }
+                            return u.toString();
+                        } catch (_) {
+                            return raw;
+                        }
+                    }
+
+                    if (CFG.fanboyEnabled) {
+                        const removeAnnoyances = () => {
+                            document.querySelectorAll('div, section, aside').forEach(el => {
+                                const txt = (el.id + ' ' + el.className).toLowerCase();
+                                if (
+                                    txt.includes('cookie') || txt.includes('gdpr') ||
+                                    txt.includes('popup') || txt.includes('modal') ||
+                                    txt.includes('newsletter') || txt.includes('subscribe-bar')
+                                ) {
+                                    const style = window.getComputedStyle(el);
+                                    if (style.position === 'fixed' || style.position === 'sticky' || parseInt(style.zIndex || '0', 10) > 50) {
+                                        el.remove();
+                                    }
+                                }
+                            });
+                        };
+                        document.addEventListener('DOMContentLoaded', removeAnnoyances);
+                        setTimeout(removeAnnoyances, 1200);
+                    }
+
+                    document.addEventListener('click', function(e) {
+                        const link = e.target.closest('a[href]');
+                        if (!link) return;
+                        const href = link.getAttribute('href');
+                        if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+                        e.preventDefault();
+                        try {
+                            const resolved = new URL(href, document.baseURI).href;
+                            const cleaned = cleanFrameUrl(resolved);
+                            window.parent.postMessage({ type: 'VIA_NAVIGATE', url: cleaned }, '*');
+                        } catch (_) {}
+                    }, true);
+                })();
             <\/script>`;
 
             if (/<\/body>/i.test(output)) {
@@ -1103,16 +1288,24 @@
             if (!event.data) return;
 
             if (event.data.type === 'VIA_NAVIGATE' && event.data.url) {
-                navigateTo(event.data.url);
+                const cleaned = cleanUrl(event.data.url);
+                if (isBlockedDomainUrl(cleaned)) {
+                    showToast('Blocked ad/tracker link');
+                    return;
+                }
+                navigateTo(cleaned);
             }
 
             if (event.data.type === 'VIA_SYNC') {
                 const tab = getActiveTab();
                 if (!tab || tab.isHome) return;
-                if (event.data.url && tab.url !== event.data.url) {
-                    tab.url = event.data.url;
-                    urlInput.value = event.data.url;
-                    updateUrlIcon(event.data.url, false);
+                if (event.data.url) {
+                    const cleaned = cleanUrl(event.data.url);
+                    if (tab.url !== cleaned) {
+                        tab.url = cleaned;
+                        urlInput.value = cleaned;
+                        updateUrlIcon(cleaned, false);
+                    }
                 }
                 if (event.data.title) {
                     tab.title = event.data.title;
@@ -1361,49 +1554,122 @@
                     <div class="settings-item" id="lightModeToggle">
                         <div class="settings-item-left">
                             <i class="bi bi-brightness-high"></i>
-                            <span class="settings-item-label">Light Mode</span>
+                            <div class="settings-item-text">
+                                <span class="settings-item-label">Light Mode</span>
+                            </div>
                         </div>
                         <div class="toggle ${lightMode ? 'active' : ''}" id="lightToggle"></div>
                     </div>
                     <div class="settings-item" id="workerModeToggle">
                         <div class="settings-item-left">
                             <i class="bi bi-cloud-check"></i>
-                            <span class="settings-item-label">Use Worker Proxy</span>
+                            <div class="settings-item-text">
+                                <span class="settings-item-label">Use Worker Proxy</span>
+                            </div>
                         </div>
                         <div class="toggle ${useWorkerProxy ? 'active' : ''}" id="workerToggle"></div>
                     </div>
                 </div>
+
+                <div class="settings-group">
+                    <div class="settings-group-title">Filter Lists</div>
+                    <div class="settings-item" id="easyListToggle">
+                        <div class="settings-item-left">
+                            <i class="bi bi-shield-x"></i>
+                            <div class="settings-item-text">
+                                <span class="settings-item-label">EasyList</span>
+                                <span class="settings-item-sub">Main ad filter list</span>
+                            </div>
+                        </div>
+                        <div class="toggle ${easyListEnabled ? 'active' : ''}" id="easyListSwitch"></div>
+                    </div>
+                    <div class="settings-item" id="easyPrivacyToggle">
+                        <div class="settings-item-left">
+                            <i class="bi bi-eye-slash"></i>
+                            <div class="settings-item-text">
+                                <span class="settings-item-label">EasyPrivacy</span>
+                                <span class="settings-item-sub">Main tracker filter list</span>
+                            </div>
+                        </div>
+                        <div class="toggle ${easyPrivacyEnabled ? 'active' : ''}" id="easyPrivacySwitch"></div>
+                    </div>
+                    <div class="settings-item" id="fanboyToggle">
+                        <div class="settings-item-left">
+                            <i class="bi bi-window-x"></i>
+                            <div class="settings-item-text">
+                                <span class="settings-item-label">Fanboy's Annoyance List</span>
+                                <span class="settings-item-sub">Popups, overlays &amp; social widgets</span>
+                            </div>
+                        </div>
+                        <div class="toggle ${fanboyEnabled ? 'active' : ''}" id="fanboySwitch"></div>
+                    </div>
+                </div>
+
+                <div class="settings-group">
+                    <div class="settings-group-title">URL Modification</div>
+                    <div class="settings-item" id="trackQueriesToggle">
+                        <div class="settings-item-left">
+                            <i class="bi bi-link-45deg"></i>
+                            <div class="settings-item-text">
+                                <span class="settings-item-label">Track Queries</span>
+                                <span class="settings-item-sub">Removes tracking queries from URLs</span>
+                            </div>
+                        </div>
+                        <div class="toggle ${trackQueriesEnabled ? 'active' : ''}" id="trackQueriesSwitch"></div>
+                    </div>
+                    <div class="settings-item" id="ampRedirectsToggle">
+                        <div class="settings-item-left">
+                            <i class="bi bi-lightning-charge"></i>
+                            <div class="settings-item-text">
+                                <span class="settings-item-label">AMP Redirects</span>
+                                <span class="settings-item-sub">Unwraps AMP redirect URLs</span>
+                            </div>
+                        </div>
+                        <div class="toggle ${ampRedirectsEnabled ? 'active' : ''}" id="ampRedirectsSwitch"></div>
+                    </div>
+                </div>
+
                 <div class="settings-group">
                     <div class="settings-group-title">Search</div>
                     <div class="settings-item">
                         <div class="settings-item-left">
                             <i class="bi bi-microsoft"></i>
-                            <span class="settings-item-label">Search Engine</span>
+                            <div class="settings-item-text">
+                                <span class="settings-item-label">Search Engine</span>
+                            </div>
                         </div>
                         <span style="font-size:12px;color:var(--text-secondary)">Bing</span>
                     </div>
                 </div>
+
                 <div class="settings-group">
                     <div class="settings-group-title">Privacy</div>
                     <div class="settings-item" id="clearHistoryBtn">
                         <div class="settings-item-left">
                             <i class="bi bi-trash"></i>
-                            <span class="settings-item-label">Clear History</span>
+                            <div class="settings-item-text">
+                                <span class="settings-item-label">Clear History</span>
+                            </div>
                         </div>
                     </div>
                     <div class="settings-item" id="clearBookmarksBtn">
                         <div class="settings-item-left">
                             <i class="bi bi-star"></i>
-                            <span class="settings-item-label">Clear Bookmarks</span>
+                            <div class="settings-item-text">
+                                <span class="settings-item-label">Clear Bookmarks</span>
+                            </div>
                         </div>
                     </div>
                 </div>
+
                 <div class="settings-group">
                     <div class="settings-group-title">About</div>
                     <div class="settings-item">
                         <div class="settings-item-left">
                             <i class="bi bi-info-circle"></i>
-                            <span class="settings-item-label">Codex256Browser v2.0</span>
+                            <div class="settings-item-text">
+                                <span class="settings-item-label">Codex256Browser v2.1</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1421,6 +1687,41 @@
                 document.getElementById('workerToggle').classList.toggle('active', useWorkerProxy);
                 localStorage.setItem('codex256_use_worker', useWorkerProxy);
                 showToast(useWorkerProxy ? 'Cloudflare Worker proxy enabled' : 'Direct frame mode enabled');
+            });
+
+            document.getElementById('easyListToggle').addEventListener('click', () => {
+                easyListEnabled = !easyListEnabled;
+                document.getElementById('easyListSwitch').classList.toggle('active', easyListEnabled);
+                localStorage.setItem('codex256_filter_easylist', easyListEnabled);
+                showToast(easyListEnabled ? 'EasyList enabled' : 'EasyList disabled');
+            });
+
+            document.getElementById('easyPrivacyToggle').addEventListener('click', () => {
+                easyPrivacyEnabled = !easyPrivacyEnabled;
+                document.getElementById('easyPrivacySwitch').classList.toggle('active', easyPrivacyEnabled);
+                localStorage.setItem('codex256_filter_easyprivacy', easyPrivacyEnabled);
+                showToast(easyPrivacyEnabled ? 'EasyPrivacy enabled' : 'EasyPrivacy disabled');
+            });
+
+            document.getElementById('fanboyToggle').addEventListener('click', () => {
+                fanboyEnabled = !fanboyEnabled;
+                document.getElementById('fanboySwitch').classList.toggle('active', fanboyEnabled);
+                localStorage.setItem('codex256_filter_fanboy', fanboyEnabled);
+                showToast(fanboyEnabled ? "Fanboy's Annoyance List enabled" : "Fanboy's Annoyance List disabled");
+            });
+
+            document.getElementById('trackQueriesToggle').addEventListener('click', () => {
+                trackQueriesEnabled = !trackQueriesEnabled;
+                document.getElementById('trackQueriesSwitch').classList.toggle('active', trackQueriesEnabled);
+                localStorage.setItem('codex256_url_track_queries', trackQueriesEnabled);
+                showToast(trackQueriesEnabled ? 'Track queries cleaning enabled' : 'Track queries cleaning disabled');
+            });
+
+            document.getElementById('ampRedirectsToggle').addEventListener('click', () => {
+                ampRedirectsEnabled = !ampRedirectsEnabled;
+                document.getElementById('ampRedirectsSwitch').classList.toggle('active', ampRedirectsEnabled);
+                localStorage.setItem('codex256_url_amp_redirects', ampRedirectsEnabled);
+                showToast(ampRedirectsEnabled ? 'AMP redirect unwrapping enabled' : 'AMP redirect unwrapping disabled');
             });
 
             document.getElementById('clearHistoryBtn').addEventListener('click', () => {
