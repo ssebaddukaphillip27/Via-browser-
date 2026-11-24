@@ -642,7 +642,7 @@
             <i class="bi bi-shield-exclamation error-icon"></i>
             <div class="error-title" id="errorTitle">Site can't be embedded here</div>
             <div class="error-message" id="errorMessage">
-                This website blocks loading inside an embedded frame or proxy. Open it directly in a new tab or try fallback proxy mode.
+                This website blocks loading inside an embedded frame or proxy. Open it in a new tab or try fallback proxy mode.
             </div>
             <div class="error-actions">
                 <button class="error-btn" id="retryBtn">Retry Worker</button>
@@ -672,7 +672,8 @@
             <div class="context-menu-item" data-action="back"><i class="bi bi-chevron-left"></i> Back</div>
             <div class="context-menu-item" data-action="forward"><i class="bi bi-chevron-right"></i> Forward</div>
             <div class="context-menu-item" data-action="refresh"><i class="bi bi-arrow-clockwise"></i> Refresh</div>
-            <div class="context-menu-item" data-action="external"><i class="bi bi-box-arrow-up-right"></i> Open in New Tab</div>
+            <div class="context-menu-item" data-action="newtab"><i class="bi bi-plus-square"></i> Open in New Tab</div>
+            <div class="context-menu-item" data-action="external"><i class="bi bi-box-arrow-up-right"></i> Open in Chrome</div>
             <div class="context-divider"></div>
             <div class="context-menu-item" data-action="bookmark"><i class="bi bi-star"></i> Bookmark</div>
             <div class="context-menu-item" data-action="history"><i class="bi bi-clock-history"></i> History</div>
@@ -770,6 +771,8 @@
         createTab();
 
         function createTab(url = null) {
+            closePanel();
+            hideTabOverview();
             const id = ++tabCounter;
             const tab = {
                 id,
@@ -899,6 +902,9 @@
 
             const tab = getActiveTab();
             if (!tab) return;
+
+            closePanel();
+            hideTabOverview();
 
             tab.isHome = false;
             tab.url = url;
@@ -1109,6 +1115,8 @@
         }
 
         function goHome() {
+            closePanel();
+            hideTabOverview();
             const tab = getActiveTab();
             if (!tab) return;
             clearTimeout(loadTimer);
@@ -1130,6 +1138,8 @@
         }
 
         function goBack() {
+            closePanel();
+            hideTabOverview();
             const tab = getActiveTab();
             if (!tab || tab.historyIndex <= 0) return;
             tab.historyIndex--;
@@ -1145,6 +1155,8 @@
         }
 
         function goForward() {
+            closePanel();
+            hideTabOverview();
             const tab = getActiveTab();
             if (!tab || tab.historyIndex >= tab.historyStack.length - 1) return;
             tab.historyIndex++;
@@ -1160,6 +1172,8 @@
         }
 
         function refresh() {
+            closePanel();
+            hideTabOverview();
             const tab = getActiveTab();
             if (!tab || tab.isHome || !tab.url) return;
             tab.cachedHtml = null;
@@ -1222,6 +1236,7 @@
         // Panels
         function openPanel(type) {
             closeAllMenus();
+            hideTabOverview();
             panelTitle.textContent = type.charAt(0).toUpperCase() + type.slice(1);
             if (type === 'bookmarks') renderBookmarksPanel();
             else if (type === 'history') renderHistoryPanel();
@@ -1255,7 +1270,6 @@
                 item.addEventListener('click', (e) => {
                     if (e.target.closest('.panel-item-delete')) return;
                     navigateTo(item.dataset.url);
-                    closePanel();
                 });
             });
 
@@ -1288,7 +1302,6 @@
             panelContent.querySelectorAll('.panel-item').forEach(item => {
                 item.addEventListener('click', () => {
                     navigateTo(item.dataset.url);
-                    closePanel();
                 });
             });
         }
@@ -1342,7 +1355,7 @@
                     <div class="settings-item">
                         <div class="settings-item-left">
                             <i class="bi bi-info-circle"></i>
-                            <span class="settings-item-label">Via Browser v1.5</span>
+                            <span class="settings-item-label">Via Browser v1.6</span>
                         </div>
                     </div>
                 </div>
@@ -1379,6 +1392,7 @@
         // Tab Overview
         function showTabOverview() {
             closeAllMenus();
+            closePanel();
             tabGrid.innerHTML = tabs.map(tab => `
                 <div class="tab-card ${tab.id === activeTabId ? 'active' : ''}" data-id="${tab.id}">
                     <div class="tab-card-preview">
@@ -1496,8 +1510,12 @@
                     case 'back': goBack(); break;
                     case 'forward': goForward(); break;
                     case 'refresh': refresh(); break;
+                    case 'newtab':
+                        createTab(tab && !tab.isHome && tab.url ? tab.url : null);
+                        break;
                     case 'external':
                         if (tab && tab.url) window.open(tab.url, '_blank', 'noopener,noreferrer');
+                        else showToast('No URL to open externally');
                         break;
                     case 'bookmark': bookmarkBtn.click(); break;
                     case 'history': openPanel('history'); break;
@@ -1547,7 +1565,7 @@
 
         document.getElementById('openNewTabBtn').addEventListener('click', () => {
             if (lastFailedUrl) {
-                window.open(lastFailedUrl, '_blank', 'noopener,noreferrer');
+                createTab(lastFailedUrl);
             }
         });
 
