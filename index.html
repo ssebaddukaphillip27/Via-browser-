@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Via Browser</title>
+    <title>Codex256Browser</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -13,6 +13,8 @@
             --bg-secondary: #16213e;
             --bg-tertiary: #0f3460;
             --accent: #e94560;
+            --marquee-bg: #ffd400;
+            --marquee-text: #111111;
             --text-primary: #ffffff;
             --text-secondary: #a0a0b0;
             --border: rgba(255,255,255,0.08);
@@ -153,6 +155,46 @@
             position: relative;
             overflow: hidden;
             background: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .marquee-banner {
+            width: 100%;
+            background: var(--marquee-bg);
+            color: var(--marquee-text);
+            font-size: 12px;
+            font-weight: 700;
+            padding: 5px 0;
+            overflow: hidden;
+            white-space: nowrap;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+            flex-shrink: 0;
+            z-index: 35;
+        }
+
+        .marquee-track {
+            display: inline-block;
+            padding-left: 100%;
+            animation: marqueeScroll 16s linear infinite;
+            white-space: pre;
+        }
+
+        .marquee-banner:hover .marquee-track {
+            animation-play-state: paused;
+        }
+
+        @keyframes marqueeScroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-100%); }
+        }
+
+        .viewport-stage {
+            flex: 1;
+            width: 100%;
+            min-height: 0;
+            position: relative;
+            overflow: hidden;
         }
 
         .browser-frame {
@@ -169,22 +211,32 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: flex-start;
+            justify-content: space-between;
             background: var(--bg-primary);
-            padding: 28px 20px 32px;
+            padding: 24px 20px 14px;
             overflow-y: auto;
         }
 
+        .home-center {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: auto 0;
+        }
+
         .home-logo {
-            font-size: 44px;
+            font-size: clamp(28px, 7.5vw, 42px);
             font-weight: 700;
             color: var(--accent);
-            margin-bottom: 6px;
-            letter-spacing: -1px;
-            line-height: 1.1;
+            margin-bottom: 8px;
+            letter-spacing: -0.8px;
+            line-height: 1.15;
+            text-align: center;
+            white-space: nowrap;
         }
         .home-logo span { color: var(--text-primary); }
-        .home-subtitle { color: var(--text-secondary); font-size: 14px; margin-bottom: 24px; }
+        .home-subtitle { color: var(--text-secondary); font-size: 14px; margin-bottom: 28px; }
 
         .home-search {
             width: 100%;
@@ -194,9 +246,9 @@
             background: var(--bg-secondary);
             border: 1px solid var(--border);
             border-radius: 24px;
-            padding: 12px 18px;
+            padding: 13px 18px;
             gap: 10px;
-            margin-bottom: 28px;
+            margin-bottom: 24px;
             transition: all 0.3s;
         }
         .home-search:focus-within {
@@ -218,28 +270,6 @@
             flex-shrink: 0;
         }
 
-        .quick-links {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-            gap: 14px;
-            max-width: 580px;
-            width: 100%;
-            margin-bottom: 22px;
-        }
-        .quick-link {
-            display: flex; flex-direction: column; align-items: center;
-            gap: 8px; padding: 12px 6px;
-            border-radius: 12px; cursor: pointer;
-            transition: all 0.2s; text-decoration: none;
-        }
-        .quick-link:hover { background: var(--hover); transform: translateY(-2px); }
-        .quick-link-icon {
-            width: 44px; height: 44px; border-radius: 12px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 20px; color: white;
-        }
-        .quick-link-label { font-size: 11px; color: var(--text-secondary); text-align: center; }
-
         .home-note {
             max-width: 540px;
             font-size: 12px;
@@ -247,6 +277,17 @@
             text-align: center;
             line-height: 1.5;
             opacity: 0.85;
+        }
+
+        .copyright-footer {
+            width: 100%;
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-secondary);
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+            max-width: 560px;
+            opacity: 0.9;
         }
 
         .side-panel {
@@ -559,7 +600,6 @@
         ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
         @media (max-width: 600px) {
-            .quick-links { grid-template-columns: repeat(4, 1fr); }
             .side-panel { width: 100%; right: -100%; }
             .tab { min-width: 80px; }
         }
@@ -598,109 +638,86 @@
     </div>
 
     <div class="content-area" id="contentArea">
-        <div class="loading-bar" id="loadingBar" style="width: 0%"></div>
-
-        <div class="home-page" id="homePage">
-            <div class="home-logo">Via<span>Browser</span></div>
-            <div class="home-subtitle">Fast, lightweight &amp; private</div>
-
-            <div class="home-search" id="homeSearch">
-                <i class="bi bi-search search-icon"></i>
-                <input type="text" id="homeSearchInput" placeholder="Search Bing or type a URL..." spellcheck="false">
-                <div class="search-engine-badge" title="Search Engine: Bing">
-                    <i class="bi bi-microsoft"></i>
-                    <span>Bing</span>
-                </div>
-            </div>
-
-            <div class="quick-links" id="quickLinks">
-                <div class="quick-link" data-url="https://example.com">
-                    <div class="quick-link-icon" style="background: #0066cc"><i class="bi bi-globe"></i></div>
-                    <span class="quick-link-label">Example</span>
-                </div>
-                <div class="quick-link" data-url="https://en.wikipedia.org/wiki/Main_Page">
-                    <div class="quick-link-icon" style="background: #636363"><i class="bi bi-book"></i></div>
-                    <span class="quick-link-label">Wikipedia</span>
-                </div>
-                <div class="quick-link" data-url="https://news.ycombinator.com">
-                    <div class="quick-link-icon" style="background: #ff6600"><i class="bi bi-newspaper"></i></div>
-                    <span class="quick-link-label">HN</span>
-                </div>
-                <div class="quick-link" data-url="https://info.cern.ch">
-                    <div class="quick-link-icon" style="background: #7952b3"><i class="bi bi-file-code"></i></div>
-                    <span class="quick-link-label">CERN</span>
-                </div>
-                <div class="quick-link" data-url="https://httpbin.org/get">
-                    <div class="quick-link-icon" style="background: #4a90e2"><i class="bi bi-code-slash"></i></div>
-                    <span class="quick-link-label">HTTPBin</span>
-                </div>
-                <div class="quick-link" data-url="https://html.duckduckgo.com/html/?q=web+browser">
-                    <div class="quick-link-icon" style="background: #de5833"><i class="bi bi-search"></i></div>
-                    <span class="quick-link-label">DDG Lite</span>
-                </div>
-                <div class="quick-link" data-url="https://developer.mozilla.org">
-                    <div class="quick-link-icon" style="background: #c13832"><i class="bi bi-fire"></i></div>
-                    <span class="quick-link-label">MDN</span>
-                </div>
-                <div class="quick-link" data-url="https://www.openstreetmap.org">
-                    <div class="quick-link-icon" style="background: #2e8b57"><i class="bi bi-map"></i></div>
-                    <span class="quick-link-label">OSM</span>
-                </div>
-            </div>
-
-            <p class="home-note">
-                Powered by Bing search and your Cloudflare Worker proxy. Use <strong>Open in new tab</strong> to open in a new tab inside Via Browser.
-            </p>
+        <div class="marquee-banner" aria-label="Developer Credit">
+            <div class="marquee-track">🇺🇬 Developed by Ssebadduka Phillip 🇺🇬      🇺🇬 Developed by Ssebadduka Phillip 🇺🇬</div>
         </div>
 
-        <iframe class="browser-frame" id="browserFrame" sandbox="allow-same-origin allow-scripts allow-forms"></iframe>
+        <div class="viewport-stage" id="viewportStage">
+            <div class="loading-bar" id="loadingBar" style="width: 0%"></div>
 
-        <div class="page-loader" id="pageLoader">
-            <div class="spinner"></div>
-            <div class="loader-text" id="loaderText">Loading page...</div>
-        </div>
+            <div class="home-page" id="homePage">
+                <div class="home-center">
+                    <div class="home-logo">Codex256<span>Browser</span></div>
+                    <div class="home-subtitle">Fast, lightweight &amp; private</div>
 
-        <div class="error-page" id="errorPage">
-            <i class="bi bi-shield-exclamation error-icon"></i>
-            <div class="error-title" id="errorTitle">Site can't be embedded here</div>
-            <div class="error-message" id="errorMessage">
-                This website blocks loading inside an embedded frame or proxy. Try opening in a new tab or using fallback proxy mode.
+                    <div class="home-search" id="homeSearch">
+                        <i class="bi bi-search search-icon"></i>
+                        <input type="text" id="homeSearchInput" placeholder="Search Bing or type a URL..." spellcheck="false">
+                        <div class="search-engine-badge" title="Search Engine: Bing">
+                            <i class="bi bi-microsoft"></i>
+                            <span>Bing</span>
+                        </div>
+                    </div>
+
+                    <p class="home-note">
+                        Powered by Bing search and your Cloudflare Worker proxy. Use <strong>Open in new tab</strong> to open in a new tab inside Codex256Browser.
+                    </p>
+                </div>
+
+                <footer class="copyright-footer">
+                    &copy; 2026 Ssebadduka Phillip &bull; Codex256Browser
+                </footer>
             </div>
-            <div class="error-actions">
-                <button class="error-btn" id="retryBtn">Retry Worker</button>
-                <button class="error-btn" id="proxyRetryBtn">Try Fallback Proxy</button>
-                <button class="error-btn primary" id="openNewTabBtn">Open in new tab</button>
-            </div>
-        </div>
 
-        <div class="overlay" id="overlay"></div>
-        <div class="side-panel" id="sidePanel">
-            <div class="panel-header">
-                <h3 id="panelTitle">Bookmarks</h3>
-                <button class="panel-close" id="panelClose"><i class="bi bi-x"></i></button>
-            </div>
-            <div class="panel-content" id="panelContent"></div>
-        </div>
+            <iframe class="browser-frame" id="browserFrame" sandbox="allow-same-origin allow-scripts allow-forms"></iframe>
 
-        <div class="tab-overview" id="tabOverview">
-            <div class="tab-overview-header">
-                <h2>Tabs</h2>
-                <button class="nav-btn" id="closeOverview"><i class="bi bi-x-lg"></i></button>
+            <div class="page-loader" id="pageLoader">
+                <div class="spinner"></div>
+                <div class="loader-text" id="loaderText">Loading page...</div>
             </div>
-            <div class="tab-grid" id="tabGrid"></div>
-        </div>
 
-        <div class="context-menu" id="contextMenu">
-            <div class="context-menu-item" data-action="back"><i class="bi bi-chevron-left"></i> Back</div>
-            <div class="context-menu-item" data-action="forward"><i class="bi bi-chevron-right"></i> Forward</div>
-            <div class="context-menu-item" data-action="refresh"><i class="bi bi-arrow-clockwise"></i> Refresh</div>
-            <div class="context-menu-item" data-action="newtab"><i class="bi bi-plus-square"></i> Open in New Tab</div>
-            <div class="context-divider"></div>
-            <div class="context-menu-item" data-action="bookmark"><i class="bi bi-star"></i> Bookmark</div>
-            <div class="context-menu-item" data-action="history"><i class="bi bi-clock-history"></i> History</div>
-            <div class="context-divider"></div>
-            <div class="context-menu-item" data-action="nightmode"><i class="bi bi-moon"></i> Light / Night Mode</div>
-            <div class="context-menu-item" data-action="settings"><i class="bi bi-gear"></i> Settings</div>
+            <div class="error-page" id="errorPage">
+                <i class="bi bi-shield-exclamation error-icon"></i>
+                <div class="error-title" id="errorTitle">Site can't be embedded here</div>
+                <div class="error-message" id="errorMessage">
+                    This website blocks loading inside an embedded frame or proxy. Try opening in a new tab or using fallback proxy mode.
+                </div>
+                <div class="error-actions">
+                    <button class="error-btn" id="retryBtn">Retry Worker</button>
+                    <button class="error-btn" id="proxyRetryBtn">Try Fallback Proxy</button>
+                    <button class="error-btn primary" id="openNewTabBtn">Open in new tab</button>
+                </div>
+            </div>
+
+            <div class="overlay" id="overlay"></div>
+            <div class="side-panel" id="sidePanel">
+                <div class="panel-header">
+                    <h3 id="panelTitle">Bookmarks</h3>
+                    <button class="panel-close" id="panelClose"><i class="bi bi-x"></i></button>
+                </div>
+                <div class="panel-content" id="panelContent"></div>
+            </div>
+
+            <div class="tab-overview" id="tabOverview">
+                <div class="tab-overview-header">
+                    <h2>Tabs</h2>
+                    <button class="nav-btn" id="closeOverview"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <div class="tab-grid" id="tabGrid"></div>
+            </div>
+
+            <div class="context-menu" id="contextMenu">
+                <div class="context-menu-item" data-action="back"><i class="bi bi-chevron-left"></i> Back</div>
+                <div class="context-menu-item" data-action="forward"><i class="bi bi-chevron-right"></i> Forward</div>
+                <div class="context-menu-item" data-action="refresh"><i class="bi bi-arrow-clockwise"></i> Refresh</div>
+                <div class="context-menu-item" data-action="newtab"><i class="bi bi-plus-square"></i> Open in New Tab</div>
+                <div class="context-divider"></div>
+                <div class="context-menu-item" data-action="bookmark"><i class="bi bi-star"></i> Bookmark</div>
+                <div class="context-menu-item" data-action="history"><i class="bi bi-clock-history"></i> History</div>
+                <div class="context-divider"></div>
+                <div class="context-menu-item" data-action="nightmode"><i class="bi bi-moon"></i> Light / Night Mode</div>
+                <div class="context-menu-item" data-action="settings"><i class="bi bi-gear"></i> Settings</div>
+            </div>
         </div>
     </div>
 
@@ -736,14 +753,14 @@
         let tabs = [];
         let activeTabId = null;
         let tabCounter = 0;
-        let bookmarks = JSON.parse(localStorage.getItem('via_bookmarks') || '[]');
-        let historyList = JSON.parse(localStorage.getItem('via_history') || '[]');
-        let lightMode = localStorage.getItem('via_lightmode') === 'true';
-        let useWorkerProxy = localStorage.getItem('via_use_worker') !== 'false';
+        let bookmarks = JSON.parse(localStorage.getItem('codex256_bookmarks') || '[]');
+        let historyList = JSON.parse(localStorage.getItem('codex256_history') || '[]');
+        let lightMode = localStorage.getItem('codex256_lightmode') === 'true';
+        let useWorkerProxy = localStorage.getItem('codex256_use_worker') !== 'false';
         let lastFailedUrl = '';
         let loadTimer = null;
 
-        localStorage.setItem('via_engine', 'bing');
+        localStorage.setItem('codex256_engine', 'bing');
 
         if (lightMode) {
             document.body.classList.add('light-mode');
@@ -765,7 +782,7 @@
         const urlIcon = document.getElementById('urlIcon');
         const bookmarkBtn = document.getElementById('bookmarkBtn');
         const menuBtn = document.getElementById('menuBtn');
-        const contentArea = document.getElementById('contentArea');
+        const viewportStage = document.getElementById('viewportStage');
         const homePage = document.getElementById('homePage');
         const browserFrame = document.getElementById('browserFrame');
         const loadingBar = document.getElementById('loadingBar');
@@ -1235,14 +1252,14 @@
                 return;
             }
             bookmarks.push({ url, title, date: Date.now() });
-            localStorage.setItem('via_bookmarks', JSON.stringify(bookmarks));
+            localStorage.setItem('codex256_bookmarks', JSON.stringify(bookmarks));
             updateBookmarkIcon();
             showToast('Bookmarked');
         }
 
         function removeFromBookmarks(url) {
             bookmarks = bookmarks.filter(b => b.url !== url);
-            localStorage.setItem('via_bookmarks', JSON.stringify(bookmarks));
+            localStorage.setItem('codex256_bookmarks', JSON.stringify(bookmarks));
             updateBookmarkIcon();
             showToast('Bookmark removed');
         }
@@ -1260,7 +1277,7 @@
         function addToHistory(url, title) {
             historyList.unshift({ url, title, date: Date.now() });
             if (historyList.length > 100) historyList = historyList.slice(0, 100);
-            localStorage.setItem('via_history', JSON.stringify(historyList));
+            localStorage.setItem('codex256_history', JSON.stringify(historyList));
         }
 
         function openPanel(type) {
@@ -1306,7 +1323,7 @@
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     bookmarks.splice(parseInt(btn.dataset.index), 1);
-                    localStorage.setItem('via_bookmarks', JSON.stringify(bookmarks));
+                    localStorage.setItem('codex256_bookmarks', JSON.stringify(bookmarks));
                     renderBookmarksPanel();
                     updateBookmarkIcon();
                 });
@@ -1323,7 +1340,7 @@
                     <div class="panel-item-icon"><i class="bi bi-clock"></i></div>
                     <div class="panel-item-info">
                         <div class="panel-item-title">${escapeHtml(h.title)}</div>
-                        <div class="panel-item-subtitle">${formatTime(h.date)} · ${escapeHtml(h.url)}</div>
+                        <div class="panel-item-subtitle">${formatTime(h.date)} &middot; ${escapeHtml(h.url)}</div>
                     </div>
                 </div>
             `).join('');
@@ -1384,7 +1401,7 @@
                     <div class="settings-item">
                         <div class="settings-item-left">
                             <i class="bi bi-info-circle"></i>
-                            <span class="settings-item-label">Via Browser v1.8</span>
+                            <span class="settings-item-label">Codex256Browser v1.9</span>
                         </div>
                     </div>
                 </div>
@@ -1394,25 +1411,25 @@
                 lightMode = !lightMode;
                 document.body.classList.toggle('light-mode', lightMode);
                 document.getElementById('lightToggle').classList.toggle('active', lightMode);
-                localStorage.setItem('via_lightmode', lightMode);
+                localStorage.setItem('codex256_lightmode', lightMode);
             });
 
             document.getElementById('workerModeToggle').addEventListener('click', () => {
                 useWorkerProxy = !useWorkerProxy;
                 document.getElementById('workerToggle').classList.toggle('active', useWorkerProxy);
-                localStorage.setItem('via_use_worker', useWorkerProxy);
+                localStorage.setItem('codex256_use_worker', useWorkerProxy);
                 showToast(useWorkerProxy ? 'Cloudflare Worker proxy enabled' : 'Direct frame mode enabled');
             });
 
             document.getElementById('clearHistoryBtn').addEventListener('click', () => {
                 historyList = [];
-                localStorage.setItem('via_history', '[]');
+                localStorage.setItem('codex256_history', '[]');
                 showToast('History cleared');
             });
 
             document.getElementById('clearBookmarksBtn').addEventListener('click', () => {
                 bookmarks = [];
-                localStorage.setItem('via_bookmarks', '[]');
+                localStorage.setItem('codex256_bookmarks', '[]');
                 updateBookmarkIcon();
                 showToast('Bookmarks cleared');
             });
@@ -1546,7 +1563,7 @@
                     case 'nightmode':
                         lightMode = !lightMode;
                         document.body.classList.toggle('light-mode', lightMode);
-                        localStorage.setItem('via_lightmode', lightMode);
+                        localStorage.setItem('codex256_lightmode', lightMode);
                         break;
                     case 'settings': openPanel('settings'); break;
                 }
@@ -1592,10 +1609,6 @@
             if (lastFailedUrl) {
                 createTab(lastFailedUrl);
             }
-        });
-
-        document.querySelectorAll('.quick-link').forEach(link => {
-            link.addEventListener('click', () => navigateTo(link.dataset.url));
         });
 
         document.addEventListener('click', (e) => {
