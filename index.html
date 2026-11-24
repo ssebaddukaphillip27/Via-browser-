@@ -408,7 +408,7 @@
             border: 1px solid var(--border);
             border-radius: 10px;
             padding: 6px;
-            min-width: 160px;
+            min-width: 170px;
             box-shadow: var(--shadow);
             z-index: 200;
             display: none;
@@ -608,8 +608,8 @@
                 <i class="bi bi-search search-icon"></i>
                 <input type="text" id="homeSearchInput" placeholder="Search the web or type a URL..." spellcheck="false">
                 <div class="search-engine-selector" id="engineSelector">
-                    <i class="bi bi-google"></i>
-                    <span id="engineName">Google</span>
+                    <i class="bi bi-microsoft"></i>
+                    <span id="engineName">Bing</span>
                     <i class="bi bi-chevron-down" style="font-size:10px"></i>
                 </div>
             </div>
@@ -650,7 +650,7 @@
             </div>
 
             <p class="home-note">
-                Powered by your Cloudflare Worker proxy. If a site still blocks framing, use <strong>Open in new tab</strong>.
+                Powered by your Cloudflare Worker proxy. Bing is set by default for smooth search; use <strong>Open in new tab</strong> if a site blocks proxy framing.
             </p>
         </div>
 
@@ -705,11 +705,11 @@
         </div>
 
         <div class="engine-dropdown" id="engineDropdown">
-            <div class="engine-option active" data-engine="google">
-                <i class="bi bi-google"></i> Google
-            </div>
-            <div class="engine-option" data-engine="bing">
+            <div class="engine-option active" data-engine="bing">
                 <i class="bi bi-microsoft"></i> Bing
+            </div>
+            <div class="engine-option" data-engine="google">
+                <i class="bi bi-google"></i> Google
             </div>
             <div class="engine-option" data-engine="duckduckgo">
                 <i class="bi bi-shield-check"></i> DuckDuckGo
@@ -755,7 +755,7 @@
         let tabCounter = 0;
         let bookmarks = JSON.parse(localStorage.getItem('via_bookmarks') || '[]');
         let historyList = JSON.parse(localStorage.getItem('via_history') || '[]');
-        let currentEngine = localStorage.getItem('via_engine') || 'google';
+        let currentEngine = localStorage.getItem('via_engine') || 'bing';
         let lightMode = localStorage.getItem('via_lightmode') === 'true';
         let useWorkerProxy = localStorage.getItem('via_use_worker') !== 'false';
         let lastFailedUrl = '';
@@ -772,8 +772,8 @@
         ];
 
         const searchEngines = {
-            google: { name: 'Google', icon: 'bi-google', url: 'https://www.google.com/search?q=' },
             bing: { name: 'Bing', icon: 'bi-microsoft', url: 'https://www.bing.com/search?q=' },
+            google: { name: 'Google', icon: 'bi-google', url: 'https://www.google.com/search?q=' },
             duckduckgo: { name: 'DuckDuckGo', icon: 'bi-shield-check', url: 'https://html.duckduckgo.com/html/?q=' },
             yahoo: { name: 'Yahoo', icon: 'bi-yahoo', url: 'https://search.yahoo.com/search?p=' }
         };
@@ -1388,7 +1388,7 @@
                     <div class="settings-item">
                         <div class="settings-item-left">
                             <i class="bi bi-info-circle"></i>
-                            <span class="settings-item-label">Via Browser v1.3</span>
+                            <span class="settings-item-label">Via Browser v1.4</span>
                         </div>
                     </div>
                 </div>
@@ -1475,7 +1475,7 @@
         }
 
         function updateEngineUI() {
-            const engine = searchEngines[currentEngine];
+            const engine = searchEngines[currentEngine] || searchEngines.bing;
             document.getElementById('engineName').textContent = engine.name;
             engineSelector.querySelector('i:first-child').className = `bi ${engine.icon}`;
             document.querySelectorAll('.engine-option').forEach(opt => {
