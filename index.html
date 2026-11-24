@@ -627,7 +627,7 @@
         </button>
         <div class="url-bar">
             <i class="bi bi-globe" id="urlIcon"></i>
-            <input type="text" class="url-input" id="urlInput" placeholder="Search Bing or enter URL" spellcheck="false">
+            <input type="text" class="url-input" id="urlInput" placeholder="Search Bing or enter URL" spellcheck="false" autocomplete="off">
         </div>
         <button class="nav-btn" id="bookmarkBtn" title="Bookmark">
             <i class="bi bi-star"></i>
@@ -652,7 +652,7 @@
 
                     <div class="home-search" id="homeSearch">
                         <i class="bi bi-search search-icon"></i>
-                        <input type="text" id="homeSearchInput" placeholder="Search Bing or type a URL..." spellcheck="false">
+                        <input type="text" id="homeSearchInput" placeholder="Search Bing or type a URL..." spellcheck="false" autocomplete="off">
                         <div class="search-engine-badge" title="Search Engine: Bing">
                             <i class="bi bi-microsoft"></i>
                             <span>Bing</span>
@@ -844,6 +844,7 @@
 
             clearTimeout(loadTimer);
             urlInput.value = tab.isHome ? '' : tab.url;
+            if (tab.isHome) homeSearchInput.value = '';
             updateUrlIcon(tab.url, tab.isHome);
 
             homePage.style.display = 'none';
@@ -1107,7 +1108,7 @@
 
             if (event.data.type === 'VIA_SYNC') {
                 const tab = getActiveTab();
-                if (!tab) return;
+                if (!tab || tab.isHome) return;
                 if (event.data.url && tab.url !== event.data.url) {
                     tab.url = event.data.url;
                     urlInput.value = event.data.url;
@@ -1180,6 +1181,7 @@
             pageLoader.classList.remove('show');
             errorPage.classList.remove('show');
             urlInput.value = '';
+            homeSearchInput.value = '';
             updateUrlIcon('', true);
             updateNavButtons();
             renderTabs();
@@ -1401,7 +1403,7 @@
                     <div class="settings-item">
                         <div class="settings-item-left">
                             <i class="bi bi-info-circle"></i>
-                            <span class="settings-item-label">Codex256Browser v1.9</span>
+                            <span class="settings-item-label">Codex256Browser v2.0</span>
                         </div>
                     </div>
                 </div>
