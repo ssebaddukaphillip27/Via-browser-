@@ -49,7 +49,7 @@
             border-bottom: 1px solid var(--border);
             padding: 4px 8px;
             min-height: 40px;
-            gap: 2px;
+            gap: 4px;
             overflow-x: auto;
             scrollbar-width: none;
         }
@@ -66,8 +66,8 @@
             cursor: pointer;
             border-radius: 8px;
             white-space: nowrap;
-            max-width: 180px;
-            min-width: 100px;
+            max-width: 190px;
+            min-width: 110px;
             transition: all 0.2s ease;
             gap: 8px;
         }
@@ -78,7 +78,7 @@
             width: 18px; height: 18px;
             display: flex; align-items: center; justify-content: center;
             border-radius: 50%; font-size: 10px;
-            opacity: 0; transition: all 0.2s;
+            opacity: 0.65; transition: all 0.2s;
         }
         .tab:hover .tab-close { opacity: 1; }
         .tab-close:hover { background: var(--accent); color: white; }
@@ -129,7 +129,7 @@
             border-color: var(--accent);
             box-shadow: 0 0 0 2px rgba(233, 69, 96, 0.2);
         }
-        .url-bar .bi-lock, .url-bar .bi-globe {
+        .url-bar .bi-lock, .url-bar .bi-globe, .url-bar .bi-search {
             color: var(--text-secondary); font-size: 13px; flex-shrink: 0;
         }
         .url-input {
@@ -142,14 +142,14 @@
             flex: 1;
             position: relative;
             overflow: hidden;
-            background: white;
+            background: var(--bg-primary);
         }
 
         .browser-frame {
             width: 100%;
             height: 100%;
             border: none;
-            background: white;
+            background: #ffffff;
             display: none;
         }
 
@@ -185,7 +185,7 @@
             border-radius: 24px;
             padding: 12px 20px;
             gap: 12px;
-            margin-bottom: 40px;
+            margin-bottom: 36px;
             transition: all 0.3s;
         }
         .home-search:focus-within {
@@ -201,24 +201,24 @@
 
         .search-engine-selector {
             display: flex; align-items: center; gap: 6px;
-            padding: 4px 10px; border-radius: 12px;
+            padding: 5px 10px; border-radius: 12px;
             background: var(--bg-tertiary); cursor: pointer;
             font-size: 12px; color: var(--text-secondary);
-            transition: all 0.2s;
+            transition: all 0.2s; flex-shrink: 0;
         }
         .search-engine-selector:hover { color: var(--text-primary); }
 
         .quick-links {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
             gap: 16px;
-            max-width: 560px;
+            max-width: 580px;
             width: 100%;
-            margin-bottom: 32px;
+            margin-bottom: 24px;
         }
         .quick-link {
             display: flex; flex-direction: column; align-items: center;
-            gap: 8px; padding: 16px 8px;
+            gap: 8px; padding: 14px 8px;
             border-radius: 12px; cursor: pointer;
             transition: all 0.2s; text-decoration: none;
         }
@@ -230,10 +230,19 @@
         }
         .quick-link-label { font-size: 11px; color: var(--text-secondary); text-align: center; }
 
+        .home-note {
+            max-width: 540px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-align: center;
+            line-height: 1.5;
+            opacity: 0.85;
+        }
+
         .side-panel {
             position: absolute;
-            top: 0; right: -320px;
-            width: 320px; height: 100%;
+            top: 0; right: -340px;
+            width: 340px; height: 100%;
             background: var(--bg-secondary);
             border-left: 1px solid var(--border);
             z-index: 100;
@@ -285,7 +294,7 @@
             border: none; background: transparent;
             color: var(--text-secondary);
             cursor: pointer; border-radius: 4px; font-size: 12px;
-            opacity: 0; transition: all 0.2s;
+            opacity: 0.7; transition: all 0.2s;
         }
         .panel-item:hover .panel-item-delete { opacity: 1; }
         .panel-item-delete:hover { color: var(--accent); }
@@ -353,7 +362,7 @@
             border: 1px solid var(--border);
             border-radius: 10px;
             padding: 6px;
-            min-width: 180px;
+            min-width: 190px;
             box-shadow: var(--shadow);
             z-index: 200;
             display: none;
@@ -464,7 +473,6 @@
         }
         .tab-card-close:hover { background: var(--accent); color: white; }
 
-        /* Loading overlay inside content area */
         .page-loader {
             position: absolute;
             top: 0; left: 0;
@@ -491,7 +499,6 @@
             font-size: 13px;
         }
 
-        /* Error page */
         .error-page {
             position: absolute;
             top: 0; left: 0;
@@ -519,16 +526,18 @@
         .error-message {
             font-size: 13px;
             color: var(--text-secondary);
-            max-width: 400px;
+            max-width: 440px;
             line-height: 1.5;
         }
         .error-actions {
             display: flex;
-            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
             margin-top: 8px;
         }
         .error-btn {
-            padding: 8px 20px;
+            padding: 8px 18px;
             border-radius: 20px;
             border: 1px solid var(--border);
             background: var(--bg-secondary);
@@ -593,11 +602,11 @@
 
         <div class="home-page" id="homePage">
             <div class="home-logo">Via<span>Browser</span></div>
-            <div class="home-subtitle">Fast, lightweight & private</div>
+            <div class="home-subtitle">Fast, lightweight &amp; private</div>
 
             <div class="home-search" id="homeSearch">
                 <i class="bi bi-search search-icon"></i>
-                <input type="text" id="homeSearchInput" placeholder="Search the web..." spellcheck="false">
+                <input type="text" id="homeSearchInput" placeholder="Search the web or type a URL..." spellcheck="false">
                 <div class="search-engine-selector" id="engineSelector">
                     <i class="bi bi-google"></i>
                     <span id="engineName">Google</span>
@@ -606,42 +615,46 @@
             </div>
 
             <div class="quick-links" id="quickLinks">
-                <div class="quick-link" data-url="https://en.wikipedia.org">
-                    <div class="quick-link-icon" style="background: #636363"><i class="bi bi-book"></i></div>
-                    <span class="quick-link-label">Wikipedia</span>
-                </div>
                 <div class="quick-link" data-url="https://example.com">
                     <div class="quick-link-icon" style="background: #0066cc"><i class="bi bi-globe"></i></div>
                     <span class="quick-link-label">Example</span>
                 </div>
-                <div class="quick-link" data-url="https://www.bing.com">
-                    <div class="quick-link-icon" style="background: #008373"><i class="bi bi-microsoft"></i></div>
-                    <span class="quick-link-label">Bing</span>
-                </div>
-                <div class="quick-link" data-url="https://duckduckgo.com">
-                    <div class="quick-link-icon" style="background: #de5833"><i class="bi bi-shield-check"></i></div>
-                    <span class="quick-link-label">DuckDuckGo</span>
+                <div class="quick-link" data-url="https://en.wikipedia.org/wiki/Main_Page">
+                    <div class="quick-link-icon" style="background: #636363"><i class="bi bi-book"></i></div>
+                    <span class="quick-link-label">Wikipedia</span>
                 </div>
                 <div class="quick-link" data-url="https://news.ycombinator.com">
                     <div class="quick-link-icon" style="background: #ff6600"><i class="bi bi-newspaper"></i></div>
                     <span class="quick-link-label">HN</span>
                 </div>
-                <div class="quick-link" data-url="https://www.mozilla.org">
-                    <div class="quick-link-icon" style="background: #c13832"><i class="bi bi-fire"></i></div>
-                    <span class="quick-link-label">Mozilla</span>
-                </div>
-                <div class="quick-link" data-url="https://httpbin.org">
-                    <div class="quick-link-icon" style="background: #4a90e2"><i class="bi bi-code-slash"></i></div>
-                    <span class="quick-link-label">HTTPBin</span>
-                </div>
                 <div class="quick-link" data-url="https://info.cern.ch">
                     <div class="quick-link-icon" style="background: #7952b3"><i class="bi bi-file-code"></i></div>
                     <span class="quick-link-label">CERN</span>
                 </div>
+                <div class="quick-link" data-url="https://httpbin.org/get">
+                    <div class="quick-link-icon" style="background: #4a90e2"><i class="bi bi-code-slash"></i></div>
+                    <span class="quick-link-label">HTTPBin</span>
+                </div>
+                <div class="quick-link" data-url="https://html.duckduckgo.com/html/?q=web+browser">
+                    <div class="quick-link-icon" style="background: #de5833"><i class="bi bi-search"></i></div>
+                    <span class="quick-link-label">DDG Lite</span>
+                </div>
+                <div class="quick-link" data-url="https://developer.mozilla.org">
+                    <div class="quick-link-icon" style="background: #c13832"><i class="bi bi-fire"></i></div>
+                    <span class="quick-link-label">MDN</span>
+                </div>
+                <div class="quick-link" data-url="https://www.openstreetmap.org">
+                    <div class="quick-link-icon" style="background: #2e8b57"><i class="bi bi-map"></i></div>
+                    <span class="quick-link-label">OSM</span>
+                </div>
             </div>
+
+            <p class="home-note">
+                Some websites block embedding inside frames or restrict proxy requests. If a site blocks framing, use <strong>Open in new tab</strong>.
+            </p>
         </div>
 
-        <iframe class="browser-frame" id="browserFrame" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>
+        <iframe class="browser-frame" id="browserFrame" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"></iframe>
 
         <div class="page-loader" id="pageLoader">
             <div class="spinner"></div>
@@ -649,13 +662,14 @@
         </div>
 
         <div class="error-page" id="errorPage">
-            <i class="bi bi-exclamation-triangle error-icon"></i>
-            <div class="error-title">Can't reach this site</div>
+            <i class="bi bi-shield-exclamation error-icon"></i>
+            <div class="error-title" id="errorTitle">Site can't be embedded here</div>
             <div class="error-message" id="errorMessage">
-                This site blocked iframe embedding or is unreachable. Try opening it directly in a new tab.
+                This website blocks loading inside an embedded frame or proxy. Open it directly in a new tab or try proxy mode.
             </div>
             <div class="error-actions">
                 <button class="error-btn" id="retryBtn">Retry</button>
+                <button class="error-btn" id="proxyRetryBtn">Try Proxy</button>
                 <button class="error-btn primary" id="openNewTabBtn">Open in new tab</button>
             </div>
         </div>
@@ -681,11 +695,12 @@
             <div class="context-menu-item" data-action="back"><i class="bi bi-chevron-left"></i> Back</div>
             <div class="context-menu-item" data-action="forward"><i class="bi bi-chevron-right"></i> Forward</div>
             <div class="context-menu-item" data-action="refresh"><i class="bi bi-arrow-clockwise"></i> Refresh</div>
+            <div class="context-menu-item" data-action="external"><i class="bi bi-box-arrow-up-right"></i> Open in New Tab</div>
             <div class="context-divider"></div>
             <div class="context-menu-item" data-action="bookmark"><i class="bi bi-star"></i> Bookmark</div>
             <div class="context-menu-item" data-action="history"><i class="bi bi-clock-history"></i> History</div>
             <div class="context-divider"></div>
-            <div class="context-menu-item" data-action="nightmode"><i class="bi bi-moon"></i> Night Mode</div>
+            <div class="context-menu-item" data-action="nightmode"><i class="bi bi-moon"></i> Light / Night Mode</div>
             <div class="context-menu-item" data-action="settings"><i class="bi bi-gear"></i> Settings</div>
         </div>
 
@@ -738,21 +753,25 @@
         let bookmarks = JSON.parse(localStorage.getItem('via_bookmarks') || '[]');
         let historyList = JSON.parse(localStorage.getItem('via_history') || '[]');
         let currentEngine = localStorage.getItem('via_engine') || 'google';
-        let nightMode = localStorage.getItem('via_nightmode') === 'true';
-        let adBlock = localStorage.getItem('via_adblock') === 'true';
+        let lightMode = localStorage.getItem('via_lightmode') === 'true';
+        let preferProxy = localStorage.getItem('via_prefer_proxy') === 'true';
         let lastFailedUrl = '';
+        let loadTimer = null;
 
-        // Multiple CORS proxies as fallbacks
+        if (lightMode) {
+            document.body.classList.add('light-mode');
+        }
+
         const CORS_PROXIES = [
             (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-            (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+            (url) => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
             (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
         ];
 
         const searchEngines = {
-            google: { name: 'Google', icon: 'bi-google', url: 'https://www.google.com/search?igu=1&q=' },
+            google: { name: 'Google', icon: 'bi-google', url: 'https://www.google.com/search?q=' },
             bing: { name: 'Bing', icon: 'bi-microsoft', url: 'https://www.bing.com/search?q=' },
-            duckduckgo: { name: 'DuckDuckGo', icon: 'bi-shield-check', url: 'https://duckduckgo.com/?q=' },
+            duckduckgo: { name: 'DuckDuckGo', icon: 'bi-shield-check', url: 'https://html.duckduckgo.com/html/?q=' },
             yahoo: { name: 'Yahoo', icon: 'bi-yahoo', url: 'https://search.yahoo.com/search?p=' }
         };
 
@@ -786,13 +805,13 @@
         const pageLoader = document.getElementById('pageLoader');
         const loaderText = document.getElementById('loaderText');
         const errorPage = document.getElementById('errorPage');
+        const errorTitle = document.getElementById('errorTitle');
         const errorMessage = document.getElementById('errorMessage');
 
         // Initialize
         updateEngineUI();
         createTab();
 
-        // Tab Management
         function createTab(url = null) {
             const id = ++tabCounter;
             const tab = {
@@ -802,7 +821,8 @@
                 historyStack: [],
                 historyIndex: -1,
                 isHome: !url,
-                content: null // stored HTML content
+                mode: 'home', // 'home' | 'direct' | 'proxy'
+                cachedHtml: null
             };
             tabs.push(tab);
             switchTab(id);
@@ -828,9 +848,10 @@
             const tab = getActiveTab();
             if (!tab) return;
 
+            clearTimeout(loadTimer);
             urlInput.value = tab.isHome ? '' : tab.url;
+            updateUrlIcon(tab.url, tab.isHome);
 
-            // Hide everything first
             homePage.style.display = 'none';
             browserFrame.style.display = 'none';
             pageLoader.classList.remove('show');
@@ -838,14 +859,13 @@
 
             if (tab.isHome) {
                 homePage.style.display = 'flex';
-            } else if (tab.content !== null) {
-                // Restore from cached content
-                browserFrame.srcdoc = tab.content;
+            } else if (tab.mode === 'proxy' && tab.cachedHtml) {
+                browserFrame.removeAttribute('src');
+                browserFrame.srcdoc = tab.cachedHtml;
                 browserFrame.style.display = 'block';
             } else if (tab.url) {
-                // Need to reload
                 browserFrame.style.display = 'block';
-                loadPage(tab.url);
+                loadPage(tab.url, { forceProxy: tab.mode === 'proxy' });
             }
 
             updateNavButtons();
@@ -858,15 +878,14 @@
         }
 
         function renderTabs() {
-            const existingTabs = tabBar.querySelectorAll('.tab');
-            existingTabs.forEach(t => t.remove());
+            tabBar.querySelectorAll('.tab').forEach(t => t.remove());
 
             tabs.forEach(tab => {
                 const tabEl = document.createElement('button');
                 tabEl.className = `tab ${tab.id === activeTabId ? 'active' : ''}`;
                 tabEl.innerHTML = `
                     <span class="tab-title">${escapeHtml(tab.title)}</span>
-                    <span class="tab-close"><i class="bi bi-x"></i></span>
+                    <span class="tab-close" title="Close tab"><i class="bi bi-x"></i></span>
                 `;
                 tabEl.addEventListener('click', (e) => {
                     if (e.target.closest('.tab-close')) {
@@ -881,28 +900,44 @@
 
         function escapeHtml(str) {
             const div = document.createElement('div');
-            div.textContent = str;
+            div.textContent = String(str ?? '');
             return div.innerHTML;
         }
 
-        // Navigation
-        function parseInput(input) {
-            let url = input.trim();
-            if (!url) return null;
-
-            // Check if it's a URL
-            if (/^https?:\/\//i.test(url)) {
-                return url;
+        function updateUrlIcon(url, isHome) {
+            if (isHome || !url) {
+                urlIcon.className = 'bi bi-search';
+                return;
             }
-            // Looks like a domain
-            if (/^[\w-]+(\.[\w-]+)+(:\d+)?(\/.*)?$/.test(url) && !url.includes(' ')) {
-                return 'https://' + url;
+            try {
+                const parsed = new URL(url);
+                urlIcon.className = parsed.protocol === 'https:' ? 'bi bi-lock' : 'bi bi-globe';
+            } catch {
+                urlIcon.className = 'bi bi-globe';
             }
-            // Treat as search
-            return searchEngines[currentEngine].url + encodeURIComponent(url);
         }
 
-        async function navigateTo(input) {
+        function parseInput(input) {
+            const trimmed = input.trim();
+            if (!trimmed) return null;
+
+            if (/^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(trimmed)) {
+                return trimmed;
+            }
+
+            // Domain name or IP/localhost pattern (no spaces)
+            if (
+                !trimmed.includes(' ') &&
+                (/^(localhost|\d{1,3}(\.\d{1,3}){3})(:\d+)?(\/.*)?$/i.test(trimmed) ||
+                 /^[\w-]+(\.[\w-]+)+(:\d+)?(\/.*)?$/.test(trimmed))
+            ) {
+                return 'https://' + trimmed;
+            }
+
+            return searchEngines[currentEngine].url + encodeURIComponent(trimmed);
+        }
+
+        async function navigateTo(input, options = {}) {
             const url = parseInput(input);
             if (!url) return;
 
@@ -912,133 +947,224 @@
             tab.isHome = false;
             tab.url = url;
             tab.title = extractDomain(url);
-            tab.content = null;
+            tab.cachedHtml = null;
 
-            // Update tab history
-            if (tab.historyIndex < tab.historyStack.length - 1) {
-                tab.historyStack = tab.historyStack.slice(0, tab.historyIndex + 1);
+            if (!options.skipHistory) {
+                if (tab.historyIndex < tab.historyStack.length - 1) {
+                    tab.historyStack = tab.historyStack.slice(0, tab.historyIndex + 1);
+                }
+                tab.historyStack.push(url);
+                tab.historyIndex = tab.historyStack.length - 1;
+                addToHistory(url, tab.title);
             }
-            tab.historyStack.push(url);
-            tab.historyIndex = tab.historyStack.length - 1;
-
-            addToHistory(url, tab.title);
 
             homePage.style.display = 'none';
             errorPage.classList.remove('show');
             browserFrame.style.display = 'block';
             urlInput.value = url;
+            updateUrlIcon(url, false);
             updateNavButtons();
             updateBookmarkIcon();
             renderTabs();
 
-            await loadPage(url);
+            await loadPage(url, options);
         }
 
-        async function loadPage(url) {
+        async function loadPage(url, options = {}) {
             const tab = getActiveTab();
             if (!tab) return;
 
+            clearTimeout(loadTimer);
+            lastFailedUrl = url;
             pageLoader.classList.add('show');
             errorPage.classList.remove('show');
             loaderText.textContent = 'Loading ' + extractDomain(url) + '...';
             simulateLoading();
 
-            // Try multiple proxies
+            const useProxy = options.forceProxy || preferProxy;
+
+            if (!useProxy) {
+                tab.mode = 'direct';
+                browserFrame.removeAttribute('srcdoc');
+                browserFrame.src = url;
+
+                // Detect if iframe fails or refuses to load within a reasonable window
+                loadTimer = setTimeout(() => {
+                    if (getActiveTab()?.id !== tab.id || tab.isHome) return;
+                    let blockedOrStalled = false;
+                    try {
+                        // Same-origin check: if accessible, verify if it's an empty/error shell
+                        const doc = browserFrame.contentDocument;
+                        if (doc && (!doc.body || doc.body.innerHTML.trim() === '')) {
+                            blockedOrStalled = true;
+                        }
+                    } catch {
+                        // Cross-origin frame: many sites set X-Frame-Options/CSP silently without firing onload
+                        // Give cross-origin sites a bit longer before showing helper prompt
+                    }
+
+                    finishLoadingVisual();
+                    if (blockedOrStalled) {
+                        showFrameBlocked(url, 'This site could not be loaded inside the embedded frame.');
+                    }
+                }, 4500);
+                return;
+            }
+
+            await loadViaProxy(url, tab);
+        }
+
+        async function loadViaProxy(url, tab) {
+            tab.mode = 'proxy';
             let html = null;
-            let usedProxy = false;
 
             for (let i = 0; i < CORS_PROXIES.length; i++) {
+                if (getActiveTab()?.id !== tab.id) return;
                 try {
-                    loaderText.textContent = `Loading (proxy ${i + 1}/${CORS_PROXIES.length})...`;
+                    loaderText.textContent = `Fetching via proxy (${i + 1}/${CORS_PROXIES.length})...`;
                     const proxyUrl = CORS_PROXIES[i](url);
                     const response = await fetch(proxyUrl, {
-                        signal: AbortSignal.timeout(15000)
+                        signal: AbortSignal.timeout(12000)
                     });
                     if (!response.ok) throw new Error('HTTP ' + response.status);
-                    html = await response.text();
-                    if (html && html.length > 0) {
-                        usedProxy = true;
+                    const text = await response.text();
+                    if (text && text.trim().length > 0) {
+                        html = text;
                         break;
                     }
-                } catch (e) {
-                    console.warn(`Proxy ${i + 1} failed:`, e.message);
-                    continue;
+                } catch (err) {
+                    console.warn(`Proxy ${i + 1} failed:`, err.message);
                 }
             }
 
-            // Hide loader
-            pageLoader.classList.remove('show');
-            loadingBar.style.transition = 'none';
-            loadingBar.style.width = '0%';
+            finishLoadingVisual();
+
+            if (getActiveTab()?.id !== tab.id) return;
 
             if (html) {
-                // Inject <base href> for relative URLs
-                try {
-                    const base = new URL(url);
-                    const baseHref = base.origin + base.pathname.replace(/[^/]*$/, '');
-                    const baseTag = `<base href="${baseHref}" target="_blank">`;
+                const preparedHtml = prepareProxiedHtml(html, url);
+                tab.cachedHtml = preparedHtml;
+                browserFrame.removeAttribute('src');
+                browserFrame.srcdoc = preparedHtml;
+                browserFrame.style.display = 'block';
 
-                    // Remove existing base tags
-                    html = html.replace(/<base[^>]*>/gi, '');
-
-                    // Inject our base tag
-                    if (/<head[^>]*>/i.test(html)) {
-                        html = html.replace(/<head[^>]*>/i, (match) => match + baseTag);
-                    } else if (/<html[^>]*>/i.test(html)) {
-                        html = html.replace(/<html[^>]*>/i, (match) => match + '<head>' + baseTag + '</head>');
-                    } else {
-                        html = '<head>' + baseTag + '</head>' + html;
-                    }
-
-                    // Add a style override to ensure visibility
-                    const extraStyle = `<style>
-                        body { margin: 0; }
-                        a[target] { }
-                    </style>`;
-                    html = html.replace('</head>', extraStyle + '</head>');
-
-                } catch (e) {
-                    console.warn('Failed to inject base tag:', e);
+                const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
+                if (titleMatch && titleMatch[1].trim()) {
+                    tab.title = titleMatch[1].trim();
+                    renderTabs();
                 }
-
-                // Cache content in tab
-                if (tab.id === activeTabId) {
-                    tab.content = html;
-                    browserFrame.srcdoc = html;
-                } else {
-                    tab.content = html;
-                }
-
-                // Try to extract title
-                try {
-                    const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
-                    if (titleMatch && titleMatch[1].trim()) {
-                        tab.title = titleMatch[1].trim();
-                        renderTabs();
-                    }
-                } catch (e) {}
-
             } else {
-                // All proxies failed - show error
-                lastFailedUrl = url;
-                errorPage.classList.add('show');
-                browserFrame.style.display = 'none';
-                errorMessage.textContent = `Couldn't load ${extractDomain(url)}. The site may block proxy access, or you may be offline. Try a different site.`;
+                showFrameBlocked(
+                    url,
+                    `Couldn't load ${extractDomain(url)} through proxies. The site may block proxy requests or require direct opening.`
+                );
             }
+        }
+
+        function prepareProxiedHtml(html, originalUrl) {
+            let output = html.replace(/<base[^>]*>/gi, '');
+            try {
+                const parsed = new URL(originalUrl);
+                const baseHref = parsed.origin + parsed.pathname.replace(/[^/]*$/, '');
+                const baseTag = `<base href="${escapeHtml(baseHref)}">`;
+                if (/<head[^>]*>/i.test(output)) {
+                    output = output.replace(/<head[^>]*>/i, (m) => m + baseTag);
+                } else if (/<html[^>]*>/i.test(output)) {
+                    output = output.replace(/<html[^>]*>/i, (m) => m + '<head>' + baseTag + '</head>');
+                } else {
+                    output = '<head>' + baseTag + '</head>' + output;
+                }
+            } catch {
+                // Ignore base URL parse errors
+            }
+
+            const helperScript = `<script>
+                document.addEventListener('click', function(e) {
+                    const link = e.target.closest('a[href]');
+                    if (!link) return;
+                    const href = link.getAttribute('href');
+                    if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+                    e.preventDefault();
+                    try {
+                        const resolved = new URL(href, document.baseURI).href;
+                        window.parent.postMessage({ type: 'VIA_NAVIGATE', url: resolved }, '*');
+                    } catch (_) {}
+                }, true);
+            <\/script>`;
+
+            if (/<\/body>/i.test(output)) {
+                output = output.replace(/<\/body>/i, helperScript + '</body>');
+            } else {
+                output += helperScript;
+            }
+            return output;
+        }
+
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'VIA_NAVIGATE' && event.data.url) {
+                navigateTo(event.data.url);
+            }
+        });
+
+        browserFrame.addEventListener('load', () => {
+            const tab = getActiveTab();
+            if (!tab || tab.isHome || tab.mode !== 'direct') return;
+            clearTimeout(loadTimer);
+            finishLoadingVisual();
+
+            try {
+                const doc = browserFrame.contentDocument;
+                if (doc && doc.title && doc.title.trim()) {
+                    tab.title = doc.title.trim();
+                    renderTabs();
+                }
+            } catch {
+                // Cross-origin title is restricted; keep domain title
+            }
+        });
+
+        browserFrame.addEventListener('error', () => {
+            const tab = getActiveTab();
+            if (!tab || tab.isHome || tab.mode !== 'direct') return;
+            clearTimeout(loadTimer);
+            finishLoadingVisual();
+            showFrameBlocked(tab.url, `Failed to load ${extractDomain(tab.url)} directly.`);
+        });
+
+        function showFrameBlocked(url, message) {
+            lastFailedUrl = url;
+            browserFrame.style.display = 'none';
+            errorTitle.textContent = "Can't display site inside frame";
+            errorMessage.textContent = message;
+            errorPage.classList.add('show');
+        }
+
+        function finishLoadingVisual() {
+            pageLoader.classList.remove('show');
+            loadingBar.style.width = '100%';
+            setTimeout(() => {
+                loadingBar.style.transition = 'none';
+                loadingBar.style.width = '0%';
+            }, 250);
         }
 
         function goHome() {
             const tab = getActiveTab();
             if (!tab) return;
+            clearTimeout(loadTimer);
             tab.isHome = true;
+            tab.mode = 'home';
             tab.title = 'New Tab';
             tab.url = '';
-            tab.content = null;
+            tab.cachedHtml = null;
+            browserFrame.removeAttribute('src');
+            browserFrame.removeAttribute('srcdoc');
             homePage.style.display = 'flex';
             browserFrame.style.display = 'none';
             pageLoader.classList.remove('show');
             errorPage.classList.remove('show');
             urlInput.value = '';
+            updateUrlIcon('', true);
             updateNavButtons();
             renderTabs();
         }
@@ -1050,13 +1176,12 @@
             const url = tab.historyStack[tab.historyIndex];
             tab.url = url;
             tab.title = extractDomain(url);
-            tab.content = null;
-            browserFrame.style.display = 'block';
-            errorPage.classList.remove('show');
+            tab.cachedHtml = null;
             urlInput.value = url;
+            updateUrlIcon(url, false);
             updateNavButtons();
             renderTabs();
-            loadPage(url);
+            navigateTo(url, { skipHistory: true });
         }
 
         function goForward() {
@@ -1066,20 +1191,21 @@
             const url = tab.historyStack[tab.historyIndex];
             tab.url = url;
             tab.title = extractDomain(url);
-            tab.content = null;
-            browserFrame.style.display = 'block';
-            errorPage.classList.remove('show');
+            tab.cachedHtml = null;
             urlInput.value = url;
+            updateUrlIcon(url, false);
             updateNavButtons();
             renderTabs();
-            loadPage(url);
+            navigateTo(url, { skipHistory: true });
         }
 
         function refresh() {
             const tab = getActiveTab();
-            if (!tab || tab.isHome) return;
-            tab.content = null;
-            loadPage(tab.url);
+            if (!tab || tab.isHome || !tab.url) return;
+            tab.cachedHtml = null;
+            errorPage.classList.remove('show');
+            browserFrame.style.display = 'block';
+            loadPage(tab.url, { forceProxy: tab.mode === 'proxy' });
         }
 
         function updateNavButtons() {
@@ -1092,13 +1218,10 @@
         function simulateLoading() {
             loadingBar.style.width = '0%';
             loadingBar.style.transition = 'none';
-            setTimeout(() => {
+            requestAnimationFrame(() => {
                 loadingBar.style.transition = 'width 0.5s ease';
-                loadingBar.style.width = '70%';
-                setTimeout(() => {
-                    loadingBar.style.width = '90%';
-                }, 500);
-            }, 50);
+                loadingBar.style.width = '65%';
+            });
         }
 
         // Bookmarks
@@ -1110,7 +1233,7 @@
             bookmarks.push({ url, title, date: Date.now() });
             localStorage.setItem('via_bookmarks', JSON.stringify(bookmarks));
             updateBookmarkIcon();
-            showToast('Bookmarked!');
+            showToast('Bookmarked');
         }
 
         function removeFromBookmarks(url) {
@@ -1130,7 +1253,6 @@
             bookmarkBtn.innerHTML = isBookmarked ? '<i class="bi bi-star-fill"></i>' : '<i class="bi bi-star"></i>';
         }
 
-        // History
         function addToHistory(url, title) {
             historyList.unshift({ url, title, date: Date.now() });
             if (historyList.length > 100) historyList = historyList.slice(0, 100);
@@ -1214,13 +1336,20 @@
         function renderSettingsPanel() {
             panelContent.innerHTML = `
                 <div class="settings-group">
-                    <div class="settings-group-title">Appearance</div>
-                    <div class="settings-item" id="nightModeToggle">
+                    <div class="settings-group-title">Appearance &amp; Loading</div>
+                    <div class="settings-item" id="lightModeToggle">
                         <div class="settings-item-left">
-                            <i class="bi bi-moon"></i>
-                            <span class="settings-item-label">Night Mode</span>
+                            <i class="bi bi-brightness-high"></i>
+                            <span class="settings-item-label">Light Mode</span>
                         </div>
-                        <div class="toggle ${nightMode ? '' : 'active'}" id="nightToggle"></div>
+                        <div class="toggle ${lightMode ? 'active' : ''}" id="lightToggle"></div>
+                    </div>
+                    <div class="settings-item" id="proxyModeToggle">
+                        <div class="settings-item-left">
+                            <i class="bi bi-shield-lock"></i>
+                            <span class="settings-item-label">Prefer Proxy Fetch</span>
+                        </div>
+                        <div class="toggle ${preferProxy ? 'active' : ''}" id="proxyToggle"></div>
                     </div>
                 </div>
                 <div class="settings-group">
@@ -1253,17 +1382,24 @@
                     <div class="settings-item">
                         <div class="settings-item-left">
                             <i class="bi bi-info-circle"></i>
-                            <span class="settings-item-label">Via Browser v1.1</span>
+                            <span class="settings-item-label">Via Browser v1.2</span>
                         </div>
                     </div>
                 </div>
             `;
 
-            document.getElementById('nightModeToggle').addEventListener('click', () => {
-                nightMode = !nightMode;
-                document.body.classList.toggle('light-mode');
-                document.getElementById('nightToggle').classList.toggle('active');
-                localStorage.setItem('via_nightmode', nightMode);
+            document.getElementById('lightModeToggle').addEventListener('click', () => {
+                lightMode = !lightMode;
+                document.body.classList.toggle('light-mode', lightMode);
+                document.getElementById('lightToggle').classList.toggle('active', lightMode);
+                localStorage.setItem('via_lightmode', lightMode);
+            });
+
+            document.getElementById('proxyModeToggle').addEventListener('click', () => {
+                preferProxy = !preferProxy;
+                document.getElementById('proxyToggle').classList.toggle('active', preferProxy);
+                localStorage.setItem('via_prefer_proxy', preferProxy);
+                showToast(preferProxy ? 'Proxy fetch enabled' : 'Direct frame loading enabled');
             });
 
             document.getElementById('clearHistoryBtn').addEventListener('click', () => {
@@ -1324,7 +1460,6 @@
             tabOverview.classList.remove('show');
         }
 
-        // Search Engine
         function showEngineDropdown() {
             const rect = engineSelector.getBoundingClientRect();
             const contentRect = contentArea.getBoundingClientRect();
@@ -1342,11 +1477,10 @@
             });
         }
 
-        // Utilities
         function extractDomain(url) {
             try {
                 const u = new URL(url);
-                return u.hostname.replace('www.', '');
+                return u.hostname.replace(/^www\./, '');
             } catch {
                 return url.substring(0, 30);
             }
@@ -1409,6 +1543,7 @@
             contextMenu.style.top = (rect.bottom - contentRect.top + 4) + 'px';
             contextMenu.style.right = '12px';
             contextMenu.style.left = 'auto';
+            contextMenu.style.bottom = 'auto';
             contextMenu.classList.add('show');
         });
 
@@ -1434,23 +1569,26 @@
             item.addEventListener('click', () => {
                 const action = item.dataset.action;
                 closeAllMenus();
+                const tab = getActiveTab();
                 switch (action) {
                     case 'back': goBack(); break;
                     case 'forward': goForward(); break;
                     case 'refresh': refresh(); break;
+                    case 'external':
+                        if (tab && tab.url) window.open(tab.url, '_blank', 'noopener,noreferrer');
+                        break;
                     case 'bookmark': bookmarkBtn.click(); break;
                     case 'history': openPanel('history'); break;
                     case 'nightmode':
-                        nightMode = !nightMode;
-                        document.body.classList.toggle('light-mode');
-                        localStorage.setItem('via_nightmode', nightMode);
+                        lightMode = !lightMode;
+                        document.body.classList.toggle('light-mode', lightMode);
+                        localStorage.setItem('via_lightmode', lightMode);
                         break;
                     case 'settings': openPanel('settings'); break;
                 }
             });
         });
 
-        // Bottom bar
         document.getElementById('bottomBack').addEventListener('click', goBack);
         document.getElementById('bottomForward').addEventListener('click', goForward);
         document.getElementById('bottomBookmarks').addEventListener('click', () => openPanel('bookmarks'));
@@ -1469,27 +1607,32 @@
 
         document.getElementById('closeOverview').addEventListener('click', hideTabOverview);
 
-        // Error page buttons
         document.getElementById('retryBtn').addEventListener('click', () => {
             if (lastFailedUrl) {
                 errorPage.classList.remove('show');
                 browserFrame.style.display = 'block';
-                loadPage(lastFailedUrl);
+                loadPage(lastFailedUrl, { forceProxy: false });
+            }
+        });
+
+        document.getElementById('proxyRetryBtn').addEventListener('click', () => {
+            if (lastFailedUrl) {
+                errorPage.classList.remove('show');
+                browserFrame.style.display = 'block';
+                loadPage(lastFailedUrl, { forceProxy: true });
             }
         });
 
         document.getElementById('openNewTabBtn').addEventListener('click', () => {
             if (lastFailedUrl) {
-                window.open(lastFailedUrl, '_blank');
+                window.open(lastFailedUrl, '_blank', 'noopener,noreferrer');
             }
         });
 
-        // Quick links
         document.querySelectorAll('.quick-link').forEach(link => {
             link.addEventListener('click', () => navigateTo(link.dataset.url));
         });
 
-        // Close menus on outside click
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.context-menu') && !e.target.closest('#menuBtn') && !e.target.closest('#bottomMenu')) {
                 contextMenu.classList.remove('show');
@@ -1499,10 +1642,9 @@
             }
         });
 
-        // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             if (e.ctrlKey || e.metaKey) {
-                switch (e.key) {
+                switch (e.key.toLowerCase()) {
                     case 't': e.preventDefault(); createTab(); break;
                     case 'w': e.preventDefault(); closeTab(activeTabId); break;
                     case 'l': e.preventDefault(); urlInput.focus(); urlInput.select(); break;
@@ -1510,8 +1652,6 @@
                 }
             }
         });
-
-        updateEngineUI();
     </script>
 </body>
 </html>
