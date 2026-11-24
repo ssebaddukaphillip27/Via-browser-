@@ -627,11 +627,11 @@
             </div>
 
             <p class="home-note">
-                Powered by Bing search and your Cloudflare Worker proxy. Use <strong>Open in new tab</strong> if a site blocks proxy framing.
+                Powered by Bing search and your Cloudflare Worker proxy. Use <strong>Open in new tab</strong> to open in a new tab inside Via Browser.
             </p>
         </div>
 
-        <iframe class="browser-frame" id="browserFrame" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"></iframe>
+        <iframe class="browser-frame" id="browserFrame" sandbox="allow-same-origin allow-scripts allow-forms"></iframe>
 
         <div class="page-loader" id="pageLoader">
             <div class="spinner"></div>
@@ -642,7 +642,7 @@
             <i class="bi bi-shield-exclamation error-icon"></i>
             <div class="error-title" id="errorTitle">Site can't be embedded here</div>
             <div class="error-message" id="errorMessage">
-                This website blocks loading inside an embedded frame or proxy. Open it in a new tab or try fallback proxy mode.
+                This website blocks loading inside an embedded frame or proxy. Try opening in a new tab or using fallback proxy mode.
             </div>
             <div class="error-actions">
                 <button class="error-btn" id="retryBtn">Retry Worker</button>
@@ -673,7 +673,6 @@
             <div class="context-menu-item" data-action="forward"><i class="bi bi-chevron-right"></i> Forward</div>
             <div class="context-menu-item" data-action="refresh"><i class="bi bi-arrow-clockwise"></i> Refresh</div>
             <div class="context-menu-item" data-action="newtab"><i class="bi bi-plus-square"></i> Open in New Tab</div>
-            <div class="context-menu-item" data-action="external"><i class="bi bi-box-arrow-up-right"></i> Open in Chrome</div>
             <div class="context-divider"></div>
             <div class="context-menu-item" data-action="bookmark"><i class="bi bi-star"></i> Bookmark</div>
             <div class="context-menu-item" data-action="history"><i class="bi bi-clock-history"></i> History</div>
@@ -1355,7 +1354,7 @@
                     <div class="settings-item">
                         <div class="settings-item-left">
                             <i class="bi bi-info-circle"></i>
-                            <span class="settings-item-label">Via Browser v1.6</span>
+                            <span class="settings-item-label">Via Browser v1.7</span>
                         </div>
                     </div>
                 </div>
@@ -1512,10 +1511,6 @@
                     case 'refresh': refresh(); break;
                     case 'newtab':
                         createTab(tab && !tab.isHome && tab.url ? tab.url : null);
-                        break;
-                    case 'external':
-                        if (tab && tab.url) window.open(tab.url, '_blank', 'noopener,noreferrer');
-                        else showToast('No URL to open externally');
                         break;
                     case 'bookmark': bookmarkBtn.click(); break;
                     case 'history': openPanel('history'); break;
