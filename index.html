@@ -1282,6 +1282,12 @@ function prepareProxiedHtml(html, baseUrl) {
 }
 
 async function loadViaFallbackProxies(url, tab) {
+    if (!url || !/^https?:\/\//i.test(url)) {
+        finishLoadingVisual();
+        showFrameBlocked(url || '', 'Invalid URL for fallback proxy.');
+        return;
+    }
+
     tab.mode = 'fallback';
     let html = null;
 
@@ -1290,6 +1296,9 @@ async function loadViaFallbackProxies(url, tab) {
         try {
             loaderText.textContent = `Trying fallback proxy (${i + 1}/${FALLBACK_PROXIES.length})...`;
             const res = await fetch(FALLBACK_PROXIES[i](url), { signal: AbortSignal.timeout(12000) });
+            if (res.status === 429) {
+                break;
+            }
             if (!res.ok) continue;
             const text = await res.text();
             if (text && text.trim()) {
@@ -1323,7 +1332,7 @@ async function loadPage(url, options = {}) {
     if (!tab) return;
 
     const finalUrl = cleanUrl(url);
-    if (!finalUrl) return;
+    if (!finalUrl || !/^https?:\/\//i.test(finalUrl)) return;
 
     if (isBlockedDomainUrl(finalUrl)) {
         finishLoadingVisual();
@@ -1338,6 +1347,7 @@ async function loadPage(url, options = {}) {
     clearTimeout(workerFallbackTimer);
 
     lastFailedUrl = finalUrl;
+    tab.url = finalUrl;
 
     pageLoader.classList.add('show');
     errorPage.classList.remove('show');
@@ -1347,19 +1357,11 @@ async function loadPage(url, options = {}) {
 
     simulateLoading();
 
-    /*
-     * FALLBACK MODE
-     * If the user specifically requested fallback,
-     * don't use the Cloudflare Worker.
-     */
     if (options.forceFallback) {
         await loadViaFallbackProxies(finalUrl, tab);
         return;
     }
 
-    /*
-     * DIRECT MODE
-     */
     if (!useWorkerProxy) {
         tab.mode = 'direct';
 
@@ -1376,9 +1378,6 @@ async function loadPage(url, options = {}) {
         return;
     }
 
-    /*
-     * WORKER MODE
-     */
     tab.mode = 'worker';
 
     browserFrame.removeAttribute('srcdoc');
@@ -1389,19 +1388,9 @@ async function loadPage(url, options = {}) {
 
     browserFrame.src = workerUrl;
 
-    /*
-     * IMPORTANT:
-     * Some Worker failures do not trigger iframe.onerror.
-     * Therefore we give the Worker enough time to respond,
-     * then automatically switch to fallback proxies.
-     */
     workerFallbackTimer = setTimeout(async () => {
         if (getActiveTab()?.id !== tab.id || tab.isHome) return;
 
-        /*
-         * If the iframe has successfully loaded something,
-         * don't unnecessarily switch to fallback.
-         */
         try {
             if (
                 browserFrame.contentDocument &&
@@ -1420,16 +1409,9 @@ async function loadPage(url, options = {}) {
 
     }, 12000);
 
-    /*
-     * Safety timer.
-     */
     loadTimer = setTimeout(() => {
         if (getActiveTab()?.id !== tab.id || tab.isHome) return;
 
-        /*
-         * Do not immediately show the error page.
-         * The fallback timer is responsible for recovery.
-         */
         if (tab.mode === 'worker') {
             loaderText.textContent =
                 'Waiting for proxy response...';
@@ -1857,10 +1839,6 @@ browserFrame.addEventListener('load', () => {
 
     clearTimeout(loadTimer);
 
-    /*
-     * A successful Worker response means we no longer
-     * need the automatic fallback timer.
-     */
     if (tab.mode === 'worker') {
         clearTimeout(workerFallbackTimer);
     }
@@ -1891,26 +1869,21 @@ browserFrame.addEventListener('error', async () => {
 
     clearTimeout(loadTimer);
 
-    /*
-     * If the Worker fails, automatically try the
-     * fallback proxies instead of immediately showing
-     * the error page.
-     */
     if (tab.mode === 'worker') {
         clearTimeout(workerFallbackTimer);
 
         loaderText.textContent =
             'Worker failed. Trying fallback proxy...';
 
-        await loadViaFallbackProxies(tab.url, tab);
+        await loadViaFallbackProxies(tab.url || lastFailedUrl, tab);
         return;
     }
 
     finishLoadingVisual();
 
     showFrameBlocked(
-        tab.url,
-        `Failed to load ${extractDomain(tab.url)}.`
+        tab.url || lastFailedUrl,
+        `Failed to load ${extractDomain(tab.url || lastFailedUrl)}.`
     );
 });
 
@@ -1920,8 +1893,14 @@ window.addEventListener('message', (event) => {
 
     if (data.type === 'VIA_NAVIGATE' && data.url) {
         const cleaned = cleanUrl(data.url);
-        if (isProbablyAdUrl(cleaned)) return;
+        if (!cleaned || isProbablyAdUrl(cleaned)) return;
         navigateTo(cleaned);
+    }
+
+    if (data.type === 'VIA_OPEN_TAB' && data.url) {
+        const cleaned = cleanUrl(data.url);
+        if (!cleaned || isProbablyAdUrl(cleaned)) return;
+        createTab(cleaned);
     }
 
     if (data.type === 'VIA_SYNC') {
