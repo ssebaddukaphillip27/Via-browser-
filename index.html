@@ -1892,14 +1892,28 @@ window.addEventListener('message', (event) => {
     if (!data || typeof data !== 'object') return;
 
     if (data.type === 'VIA_NAVIGATE' && data.url) {
-        const cleaned = cleanUrl(data.url);
-        if (!cleaned || isProbablyAdUrl(cleaned)) return;
+        let target = String(data.url);
+        try {
+            const u = new URL(target);
+            if (u.origin === new URL(WORKER_PROXY).origin && u.searchParams.has('url')) {
+                target = u.searchParams.get('url');
+            }
+        } catch {}
+        const cleaned = cleanUrl(target);
+        if (!cleaned) return;
         navigateTo(cleaned);
     }
 
     if (data.type === 'VIA_OPEN_TAB' && data.url) {
-        const cleaned = cleanUrl(data.url);
-        if (!cleaned || isProbablyAdUrl(cleaned)) return;
+        let target = String(data.url);
+        try {
+            const u = new URL(target);
+            if (u.origin === new URL(WORKER_PROXY).origin && u.searchParams.has('url')) {
+                target = u.searchParams.get('url');
+            }
+        } catch {}
+        const cleaned = cleanUrl(target);
+        if (!cleaned) return;
         createTab(cleaned);
     }
 
